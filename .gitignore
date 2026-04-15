@@ -39,3 +39,39 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 환경변수 (가장 중요)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Next.js 기본 (이미 있을 것)
+.next/
+out/
+node_modules/
+build/
+
+# 인증 관련
+*.pem
+*.key
+*.cert
+*.p12
+
+# DB
+*.sqlite
+*.db
+
+# 로그
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
