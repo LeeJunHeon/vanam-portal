@@ -7,6 +7,7 @@ interface AppCardProps {
   title: string;
   description: string;
   href: string;
+  status?: "online" | "pending";
 }
 
 export default function AppCard({
@@ -16,7 +17,13 @@ export default function AppCard({
   title,
   description,
   href,
+  status = "online",
 }: AppCardProps) {
+  const badge =
+    status === "pending"
+      ? { label: "준비중", bg: "#f3f4f6", color: "#6b7280" }
+      : { label: "운영중", bg: "#dcfce7", color: "#16a34a" };
+
   return (
     <div
       className="bg-white rounded-[12px] p-4 flex flex-col gap-3 hover:border-[#93c5fd] transition-colors"
@@ -39,11 +46,11 @@ export default function AppCard({
           style={{
             fontSize: "9px",
             padding: "2px 7px",
-            backgroundColor: "#dcfce7",
-            color: "#16a34a",
+            backgroundColor: badge.bg,
+            color: badge.color,
           }}
         >
-          운영중
+          {badge.label}
         </span>
       </div>
 
@@ -63,15 +70,19 @@ export default function AppCard({
           <Clock size={10} strokeWidth={1.8} />
           <span>--</span>
         </div>
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition-colors"
-          style={{ width: "26px", height: "26px" }}
-        >
-          <ArrowRight size={14} strokeWidth={2} />
-        </a>
+        {status === "pending" ? (
+          <div style={{ width: "26px", height: "26px" }} />
+        ) : (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition-colors"
+            style={{ width: "26px", height: "26px" }}
+          >
+            <ArrowRight size={14} strokeWidth={2} />
+          </a>
+        )}
       </div>
     </div>
   );

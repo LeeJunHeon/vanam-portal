@@ -1,6 +1,5 @@
-import { Layers, Flame } from "lucide-react";
+import { Package, Layers, Flame } from "lucide-react";
 import TopBar from "@/components/portal/TopBar";
-import FeaturedApp from "@/components/portal/FeaturedApp";
 import AppCard from "@/components/portal/AppCard";
 import ActivityLog from "@/components/portal/ActivityLog";
 import ServerStatus from "@/components/portal/ServerStatus";
@@ -30,46 +29,40 @@ export default function Home() {
         {/* 좌측 메인 */}
         <main className="flex-1 flex flex-col gap-5 min-w-0">
 
-          {/* 섹션 1 — 주요 시스템 */}
+          {/* 앱 카드 통합 그리드 */}
           <section>
-            <p
-              className="font-bold uppercase tracking-widest mb-3"
-              style={{ fontSize: "11px", color: "#9ca3af", letterSpacing: "0.08em" }}
-            >
-              주요 시스템
-            </p>
-            <FeaturedApp />
-          </section>
-
-          {/* 섹션 2 — 장비 제어 */}
-          <section>
-            <p
-              className="font-bold uppercase tracking-widest mb-3"
-              style={{ fontSize: "11px", color: "#9ca3af", letterSpacing: "0.08em" }}
-            >
-              장비 제어
-            </p>
             <div className="grid grid-cols-2 gap-4">
+              <AppCard
+                icon={Package}
+                iconBgColor="#eff6ff"
+                iconColor="#3b82f6"
+                title="재고관리"
+                description="웨이퍼·타겟·가스·소모품 입출고 및 바코드 추적"
+                status="online"
+                href={INVENTORY_BASE}
+              />
               <AppCard
                 icon={Layers}
                 iconBgColor="#f0fdfa"
                 iconColor="#0d9488"
-                title="챔버 제어"
-                description="CH1·CH2 공정 자동화 및 PLC 시퀀스 관리"
+                title="CH1 & CH2"
+                description="스퍼터링 공정 런 기록·레시피 관리·타겟 추적"
+                status="pending"
                 href={CHAMBER_BASE}
               />
               <AppCard
                 icon={Flame}
                 iconBgColor="#fffbeb"
                 iconColor="#d97706"
-                title="증발기"
+                title="Evaporator"
                 description="DAC 제어·증착률·두께 실시간 모니터링"
+                status="pending"
                 href={EVAPORATOR_BASE}
               />
             </div>
           </section>
 
-          {/* 섹션 3 — 최근 활동 */}
+          {/* 최근 활동 */}
           <section>
             <ActivityLog />
           </section>

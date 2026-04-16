@@ -3,14 +3,6 @@ import { Activity } from "lucide-react";
 export default function ActivityLog() {
   return (
     <div>
-      {/* 섹션 레이블 */}
-      <p
-        className="font-bold uppercase tracking-widest mb-3"
-        style={{ fontSize: "11px", color: "#9ca3af", letterSpacing: "0.08em" }}
-      >
-        최근 활동
-      </p>
-
       {/* 빈 상태 */}
       <div
         className="bg-white rounded-[12px] flex flex-col items-center justify-center py-10"
