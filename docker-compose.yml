@@ -1,0 +1,21 @@
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portal-nextjs
+    restart: unless-stopped
+    ports:
+      - "3999:3000"
+    environment:
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      AUTH_TRUST_HOST: "true"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
