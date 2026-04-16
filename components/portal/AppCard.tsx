@@ -77,6 +77,7 @@ export default function AppCard({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
+            draggable={false}
             className="flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition-colors"
             style={{ width: "26px", height: "26px" }}
           >
