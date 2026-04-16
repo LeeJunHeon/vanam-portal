@@ -1,8 +1,41 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Package, Clock, ExternalLink } from "lucide-react";
 
 const INVENTORY_URL = "https://inventory.vanam.synology.me";
 
+interface PortalSummary {
+  totalItems: number;
+  todayIn: number;
+  shortageCount: number;
+}
+
 export default function FeaturedApp() {
+  const [data, setData] = useState<PortalSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/portal-summary")
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((json) => {
+        if (cancelled) return;
+        setData({
+          totalItems: Number(json.totalItems ?? 0),
+          todayIn: Number(json.todayIn ?? 0),
+          shortageCount: Number(json.shortageCount ?? 0),
+        });
+      })
+      .catch(() => {
+        // fetch 실패 시 "--" 유지
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const display = (v: number | undefined) => (v === undefined ? "--" : v);
+
   return (
     <div
       className="bg-white rounded-[14px] p-5 transition-colors"
@@ -64,7 +97,7 @@ export default function FeaturedApp() {
       >
         <div className="px-4 py-3 text-center">
           <div className="font-bold text-gray-900 mb-0.5" style={{ fontSize: "18px" }}>
-            --
+            {display(data?.totalItems)}
           </div>
           <div className="text-gray-400 font-medium" style={{ fontSize: "11px" }}>
             총 품목
@@ -75,7 +108,7 @@ export default function FeaturedApp() {
           style={{ borderLeft: "0.5px solid #e5e7eb", borderRight: "0.5px solid #e5e7eb" }}
         >
           <div className="font-bold text-gray-900 mb-0.5" style={{ fontSize: "18px" }}>
-            --
+            {display(data?.todayIn)}
           </div>
           <div className="text-gray-400 font-medium" style={{ fontSize: "11px" }}>
             오늘 거래
@@ -83,7 +116,7 @@ export default function FeaturedApp() {
         </div>
         <div className="px-4 py-3 text-center">
           <div className="font-bold text-gray-900 mb-0.5" style={{ fontSize: "18px" }}>
-            --
+            {display(data?.shortageCount)}
           </div>
           <div className="text-gray-400 font-medium" style={{ fontSize: "11px" }}>
             재고 부족

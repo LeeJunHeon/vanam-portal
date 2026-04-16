@@ -8,6 +8,8 @@ import QuickActions from "@/components/portal/QuickActions";
 import AlertPanel from "@/components/portal/AlertPanel";
 
 const INVENTORY_BASE = "https://inventory.vanam.synology.me";
+const CHAMBER_BASE = "https://chamber.vanam.synology.me";      // 개발 예정
+const EVAPORATOR_BASE = "https://evaporator.vanam.synology.me"; // 개발 예정
 
 export default function Home() {
   return (
@@ -54,7 +56,7 @@ export default function Home() {
                 iconColor="#0d9488"
                 title="챔버 제어"
                 description="CH1·CH2 공정 자동화 및 PLC 시퀀스 관리"
-                href={INVENTORY_BASE}
+                href={CHAMBER_BASE}
               />
               <AppCard
                 icon={Flame}
@@ -62,7 +64,7 @@ export default function Home() {
                 iconColor="#d97706"
                 title="증발기"
                 description="DAC 제어·증착률·두께 실시간 모니터링"
-                href={INVENTORY_BASE}
+                href={EVAPORATOR_BASE}
               />
             </div>
           </section>
