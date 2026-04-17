@@ -25,7 +25,7 @@ export default function TopBar() {
           <span className="font-bold text-sm text-gray-900 tracking-tight">
             VanaM
           </span>
-          <span className="text-xs text-gray-400 font-medium">Platform</span>
+          <span className="hidden sm:block text-xs text-gray-400 font-medium">Platform</span>
         </div>
       </div>
 

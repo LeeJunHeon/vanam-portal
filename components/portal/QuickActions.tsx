@@ -49,7 +49,7 @@ export default function QuickActions() {
         빠른 실행
       </p>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
         {ACTIONS.map((action) => (
           <QuickActionButton
             key={action.label}

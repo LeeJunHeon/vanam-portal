@@ -47,7 +47,7 @@ const CARDS = [
 
 export default function AppCardGrid() {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {CARDS.map((card) => (
         <AppCard
           key={card.title}

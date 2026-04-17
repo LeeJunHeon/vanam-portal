@@ -108,7 +108,7 @@ export default function ServerStatus() {
         서버 상태
       </p>
 
-      <div className="divide-y divide-gray-50">
+      <div className="grid grid-cols-2 lg:grid-cols-1 gap-0 lg:divide-y lg:divide-gray-50">
         {STATUS_ITEMS.map((item) => (
           <StatusItem
             key={item.name}

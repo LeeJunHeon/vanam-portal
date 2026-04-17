@@ -26,7 +26,7 @@ export default function AppCard({
 
   return (
     <div
-      className="bg-white rounded-[12px] p-4 flex flex-col gap-3 hover:border-[#93c5fd] transition-colors"
+      className="bg-white rounded-[12px] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 hover:border-[#93c5fd] transition-colors"
       style={{ border: "0.5px solid #e5e7eb" }}
     >
       {/* 헤더 */}
