@@ -1,6 +1,15 @@
+"use client";
+
 import { LayoutGrid } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function TopBar() {
+  const { data: session, status } = useSession();
+
+  const userName = session?.user?.name ?? "사용자";
+  const initial = session?.user?.name?.[0] ?? "?";
+  const isLoading = status === "loading";
+
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 bg-white"
@@ -29,15 +38,28 @@ export default function TopBar() {
         </div>
       </div>
 
-      {/* 우측: 사용자 아바타 */}
+      {/* 우측: 사용자 정보 */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500 font-medium">관리자</span>
+        <span className="text-xs text-gray-500 font-medium">
+          {isLoading ? "..." : userName}
+        </span>
         <div
-          className="flex items-center justify-center rounded-full bg-blue-500 text-white font-semibold"
-          style={{ width: "28px", height: "28px", fontSize: "11px" }}
+          className="flex items-center justify-center rounded-full text-white font-semibold"
+          style={{
+            width: "28px",
+            height: "28px",
+            fontSize: "11px",
+            backgroundColor: isLoading ? "#d1d5db" : "#3b82f6",
+          }}
         >
-          V
+          {isLoading ? "" : initial}
         </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="text-xs font-medium text-red-400 hover:text-red-600 transition-colors ml-1"
+        >
+          로그아웃
+        </button>
       </div>
     </header>
   );
