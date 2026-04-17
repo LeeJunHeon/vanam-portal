@@ -1,4 +1,4 @@
-import { Clock, ArrowRight, type LucideIcon } from "lucide-react";
+import { Clock, type LucideIcon } from "lucide-react";
 
 interface AppCardProps {
   icon: LucideIcon;
@@ -24,10 +24,23 @@ export default function AppCard({
       ? { label: "준비중", bg: "#f3f4f6", color: "#6b7280" }
       : { label: "운영중", bg: "#dcfce7", color: "#16a34a" };
 
+  const isPending = status === "pending";
+
+  const Wrapper = isPending ? "div" : "a";
+  const wrapperProps = isPending
+    ? {}
+    : { href, target: "_blank" as const, rel: "noopener noreferrer" };
+
   return (
-    <div
-      className="bg-white rounded-[12px] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 hover:border-[#93c5fd] transition-colors"
-      style={{ border: "0.5px solid #e5e7eb" }}
+    <Wrapper
+      {...wrapperProps}
+      className={[
+        "bg-white rounded-[12px] p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 transition-colors block",
+        isPending
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-[#93c5fd]",
+      ].join(" ")}
+      style={{ border: "0.5px solid #e5e7eb", textDecoration: "none" }}
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between">
@@ -65,26 +78,12 @@ export default function AppCard({
       </div>
 
       {/* 하단 */}
-      <div className="flex items-center justify-between mt-auto pt-1">
+      <div className="flex items-center mt-auto pt-1">
         <div className="flex items-center gap-1 text-gray-400" style={{ fontSize: "11px" }}>
           <Clock size={10} strokeWidth={1.8} />
           <span>--</span>
         </div>
-        {status === "pending" ? (
-          <div style={{ width: "26px", height: "26px" }} />
-        ) : (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            draggable={false}
-            className="flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition-colors"
-            style={{ width: "26px", height: "26px" }}
-          >
-            <ArrowRight size={14} strokeWidth={2} />
-          </a>
-        )}
       </div>
-    </div>
+    </Wrapper>
   );
 }

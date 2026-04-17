@@ -2,7 +2,6 @@ import TopBar from "@/components/portal/TopBar";
 import AppCardGrid from "@/components/portal/AppCardGrid";
 import ActivityLog from "@/components/portal/ActivityLog";
 import ServerStatus from "@/components/portal/ServerStatus";
-import QuickActions from "@/components/portal/QuickActions";
 import AlertPanel from "@/components/portal/AlertPanel";
 
 export default function Home() {
@@ -28,7 +27,6 @@ export default function Home() {
         {/* 우측 사이드바 */}
         <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
           <ServerStatus />
-          <QuickActions />
           <AlertPanel />
         </aside>
       </div>
