@@ -14,8 +14,10 @@ export default function TopBar() {
   // 성의 첫 글자 (재고관리와 동일한 로직)
   const initial = (() => {
     if (!userName || userName === "사용자") return "?";
-    const parts = userName.trim().split(" ");
-    return parts[0].charAt(0).toUpperCase();
+    const parts = userName.trim().split(" ").filter(p => p.length > 0);
+    // 여러 단어면 마지막 단어(성) 첫 글자, 한 단어면 첫 글자
+    const target = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    return target.charAt(0).toUpperCase();
   })();
 
   return (
