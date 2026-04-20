@@ -11,7 +11,7 @@ const CARDS = [
     icon: Package,
     iconBgColor: "#eff6ff",
     iconColor: "#3b82f6",
-    title: "재고관리",
+    title: "재고 관리",
     description: "웨이퍼·타겟·가스·소모품 입출고 및 바코드 추적",
     status: "online" as const,
     href: INVENTORY_BASE,
@@ -22,7 +22,7 @@ const CARDS = [
     iconColor: "#16a34a",
     title: "장비 관리",
     description: "수리·클리닝·Vent 이력 통합 관리",
-    status: "pending" as const,
+    status: "online" as const,
     href: EQUIPMENT_BASE,
   },
   {
