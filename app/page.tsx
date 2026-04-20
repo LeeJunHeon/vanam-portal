@@ -11,7 +11,7 @@ export default function Home() {
 
       {/* 탑바 높이만큼 padding-top */}
       <div
-        className="flex flex-col lg:flex-row gap-4 mx-auto pt-14 lg:pt-16 pb-6 px-4"
+        className="flex flex-col lg:flex-row gap-4 mx-auto pt-14 pb-6 px-4"
         style={{ maxWidth: "1200px" }}
       >
         {/* 좌측 메인 */}
