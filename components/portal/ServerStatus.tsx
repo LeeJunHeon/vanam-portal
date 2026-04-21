@@ -14,7 +14,7 @@ const CONTAINER_LABELS: Record<string, { label: string; port: string }> = {
   portal: { label: "portal", port: ":3999" },
   "inventory-web-nextjs": { label: "inventory-web", port: ":3000" },
   "equipment-web-nextjs": { label: "equipment-web", port: ":3003" },
-  postgres: { label: "postgres", port: ":5432" },
+  postgres: { label: "postgres (inventory)", port: ":5432" },
 };
 
 function MetricBar({ label, value, max, unit, color }: {

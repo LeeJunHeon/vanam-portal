@@ -69,7 +69,7 @@ export async function GET() {
       "portal": "portal-nextjs",
       "inventory-web-nextjs": "inventory-web-nextjs",
       "equipment-web-nextjs": "equipment-web-nextjs",
-      "postgres": "postgres",
+      "postgres": "inventory-web-postgres",
     };
     const containerStatus: Record<string, string> = {};
     try {
