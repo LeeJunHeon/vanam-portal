@@ -13,11 +13,12 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       AUTH_TRUST_HOST: "true"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - internal
+      - vanam-db-net
 
 networks:
   internal:
     driver: bridge
+  vanam-db-net:
+    external: true
