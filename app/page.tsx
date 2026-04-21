@@ -9,22 +9,17 @@ export default function Home() {
     <div className="min-h-screen" style={{ backgroundColor: "#f0f2f5" }}>
       <TopBar />
 
-      {/* 탑바 높이만큼 padding-top */}
-      <div
-        className="flex flex-col lg:flex-row gap-4 mx-auto pt-14 pb-6 px-4"
-        style={{ maxWidth: "1200px" }}
-      >
-        {/* 좌측 메인 */}
-        <main className="flex-1 flex flex-col gap-5 min-w-0">
+      <div className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4" style={{ maxWidth: "1200px" }}>
+        <main className="flex-1 flex flex-col gap-6 min-w-0">
           <section>
+            <p style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>앱</p>
             <AppCardGrid />
           </section>
           <section>
+            <p style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>활동 로그</p>
             <ActivityLog />
           </section>
         </main>
-
-        {/* 우측 사이드바 */}
         <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
           <ServerStatus />
           <AlertPanel />
