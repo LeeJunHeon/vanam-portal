@@ -63,23 +63,24 @@ export async function GET() {
     } catch {}
 
     // Docker 컨테이너 상태
-    const containers = ["portal", "inventory-web-nextjs", "equipment-web-nextjs", "postgres"];
+    // key: ServerStatus.tsx에서 사용하는 식별자
+    // value: 실제 docker container_name (docker ps --format '{{.Names}}' 기준)
+    const CONTAINER_MAP: Record<string, string> = {
+      "portal": "portal-nextjs",
+      "inventory-web-nextjs": "inventory-web-nextjs",
+      "equipment-web-nextjs": "equipment-web-nextjs",
+      "postgres": "postgres",
+    };
     const containerStatus: Record<string, string> = {};
     try {
       const running = safeExec("docker ps --format '{{.Names}}'").split("\n").filter(Boolean);
-      const CONTAINER_KEYWORDS: Record<string, string> = {
-        "portal": "portal",
-        "inventory-web-nextjs": "inventory",
-        "equipment-web-nextjs": "equipment",
-        "postgres": "postgres",
-      };
-      for (const name of containers) {
-        const keyword = CONTAINER_KEYWORDS[name] ?? name;
-        const matched = running.some((r) => r.includes(keyword));
-        containerStatus[name] = matched ? "running" : "stopped";
+      for (const [key, containerName] of Object.entries(CONTAINER_MAP)) {
+        containerStatus[key] = running.includes(containerName) ? "running" : "stopped";
       }
     } catch {
-      for (const name of containers) containerStatus[name] = "unknown";
+      for (const key of Object.keys(CONTAINER_MAP)) {
+        containerStatus[key] = "unknown";
+      }
     }
 
     return NextResponse.json({
