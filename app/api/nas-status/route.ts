@@ -108,11 +108,12 @@ export async function GET() {
     let diskUsedGb = -1;
     let diskTotalGb = -1;
     try {
-      const df = safeExec("df -BG / --output=size,used | tail -1");
+      const df = safeExec("df -Pk / | tail -1");
       if (df) {
         const parts = df.trim().split(/\s+/);
-        diskTotalGb = parseInt(parts[0]);
-        diskUsedGb = parseInt(parts[1]);
+        // BusyBox df -Pk 출력: Filesystem 총KB 사용KB 여유KB 사용% 마운트
+        diskTotalGb = Math.round((parseInt(parts[1]) / 1024 / 1024) * 10) / 10;
+        diskUsedGb = Math.round((parseInt(parts[2]) / 1024 / 1024) * 10) / 10;
       }
     } catch {}
 

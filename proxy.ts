@@ -14,6 +14,11 @@ export default auth((req: NextRequest & { auth: any }) => {
     return NextResponse.next();
   }
 
+  // /api/nas-status 는 내부 시스템 API — 인증 없이 허용
+  if (pathname.startsWith("/api/nas-status")) {
+    return NextResponse.next();
+  }
+
   // /login 은 항상 허용 (포털 자체 로그인 페이지)
   if (pathname.startsWith("/login")) {
     return NextResponse.next();
