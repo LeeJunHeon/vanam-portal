@@ -130,7 +130,7 @@ export async function GET() {
     const [portal, inventory, equipment, postgres] = await Promise.all([
       checkHttp("http://localhost:3000"),              // 자기 자신
       checkHttp("http://inventory-web-nextjs:3000"),   // 재고관리
-      checkHttp("http://equipment-web-nextjs:3000"),   // 장비관리
+      checkHttp("http://equipment-web-nextjs:3003"),   // 장비관리 (내부 포트 3003)
       checkTcp("inventory-web-postgres", 5432),        // postgres
     ]);
 

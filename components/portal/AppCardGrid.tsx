@@ -14,6 +14,8 @@ export default function AppCardGrid() {
   const [invStat2, setInvStat2] = useState<string | undefined>(undefined);
   const [eqStat1, setEqStat1] = useState<string | undefined>(undefined);
   const [eqStat2, setEqStat2] = useState<string | undefined>(undefined);
+  const [invStatus, setInvStatus] = useState<"online" | "offline" | "pending">("online");
+  const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
 
   useEffect(() => {
     // 재고관리 요약 (portal-summary API 추가 전까지 graceful 처리)
@@ -37,6 +39,24 @@ export default function AppCardGrid() {
         setEqStat2(`미해결 수리 ${unresolved}건`);
       })
       .catch(() => {});
+
+    // 컨테이너 상태 (nas-status) — 앱 카드 뱃지 반영
+    const fetchNasStatus = () => {
+      fetch("/api/nas-status")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => {
+          if (!d?.containers) return;
+          setInvStatus(d.containers["inventory-web-nextjs"] === "running" ? "online" : "offline");
+          setEqStatus(d.containers["equipment-web-nextjs"]  === "running" ? "online" : "offline");
+        })
+        .catch(() => {});
+    };
+    fetchNasStatus();
+    const nasTimer = setInterval(fetchNasStatus, 30000);
+
+    return () => {
+      clearInterval(nasTimer);
+    };
   }, []);
 
   const CARDS = [
@@ -46,7 +66,7 @@ export default function AppCardGrid() {
       iconColor: "#3b82f6",
       title: "재고 관리",
       description: "웨이퍼·타겟·가스·소모품 입출고 및 바코드 추적",
-      status: "online" as const,
+      status: invStatus,
       href: INVENTORY_BASE,
       stat1: invStat1,
       stat2: invStat2,
@@ -57,7 +77,7 @@ export default function AppCardGrid() {
       iconColor: "#16a34a",
       title: "장비 관리",
       description: "수리·클리닝·Vent 이력 통합 관리",
-      status: "online" as const,
+      status: eqStatus,
       href: EQUIPMENT_BASE,
       stat1: eqStat1,
       stat2: eqStat2,

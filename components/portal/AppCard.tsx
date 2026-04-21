@@ -7,7 +7,7 @@ interface AppCardProps {
   title: string;
   description: string;
   href: string;
-  status?: "online" | "pending";
+  status?: "online" | "offline" | "pending";
   stat1?: string;
   stat2?: string;
 }
@@ -26,6 +26,8 @@ export default function AppCard({
   const badge =
     status === "pending"
       ? { label: "준비중", bg: "#f3f4f6", color: "#6b7280" }
+      : status === "offline"
+      ? { label: "중지",   bg: "#fee2e2", color: "#dc2626" }
       : { label: "운영중", bg: "#dcfce7", color: "#16a34a" };
 
   const isPending = status === "pending";
