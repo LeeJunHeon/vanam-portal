@@ -1,122 +1,117 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HardDrive, Database, Box, Cpu } from "lucide-react";
-import { type LucideIcon } from "lucide-react";
 
-type StatusValue = "online" | "offline" | "unknown";
-
-interface NasStatus {
-  nas: StatusValue;
-  db: StatusValue;
-  inventory: StatusValue;
-  chamber: StatusValue;
+interface NasData {
+  cpu: number;
+  ram: { used: number; total: number };
+  disk: { used: number; total: number };
+  uptimeDays: number;
+  containers: Record<string, string>;
 }
 
-interface StatusItemProps {
-  icon: LucideIcon;
-  name: string;
-  status: StatusValue;
-}
+const CONTAINER_LABELS: Record<string, { label: string; port: string }> = {
+  portal: { label: "portal", port: ":3999" },
+  "inventory-web-nextjs": { label: "inventory-web", port: ":3000" },
+  "equipment-web-nextjs": { label: "equipment-web", port: ":3003" },
+  postgres: { label: "postgres", port: ":5432" },
+};
 
-function StatusItem({ icon: Icon, name, status }: StatusItemProps) {
-  const badge = (() => {
-    if (status === "online") {
-      return { label: "온라인", bg: "#dcfce7", color: "#16a34a" };
-    }
-    if (status === "offline") {
-      return { label: "오프라인", bg: "#fee2e2", color: "#dc2626" };
-    }
-    return { label: "확인중", bg: "#f3f4f6", color: "#6b7280" };
-  })();
-
+function MetricBar({ label, value, max, unit, color }: {
+  label: string; value: number; max: number; unit: string; color: string;
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  const display = max > 0 ? `${value} / ${max} ${unit}` : "--";
   return (
-    <div className="flex items-center justify-between py-2.5">
-      <div className="flex items-center gap-2.5">
-        <div
-          className="flex items-center justify-center rounded-md"
-          style={{
-            width: "28px",
-            height: "28px",
-            backgroundColor: "#f9fafb",
-            border: "0.5px solid #e5e7eb",
-          }}
-        >
-          <Icon size={13} color="#6b7280" strokeWidth={1.8} />
-        </div>
-        <span className="text-gray-700 font-medium" style={{ fontSize: "12px" }}>
-          {name}
-        </span>
+    <div style={{ marginBottom: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "3px" }}>
+        <span style={{ color: "#9ca3af" }}>{label}</span>
+        <span style={{ color: "#374151", fontWeight: 500 }}>{display}</span>
       </div>
-      <span
-        className="rounded-full font-semibold"
-        style={{
-          fontSize: "9px",
-          padding: "2px 8px",
-          backgroundColor: badge.bg,
-          color: badge.color,
-        }}
-      >
-        {badge.label}
-      </span>
+      <div style={{ background: "#f3f4f6", borderRadius: "3px", height: "4px" }}>
+        <div style={{ width: `${pct}%`, height: "4px", borderRadius: "3px", background: color, transition: "width 0.4s" }} />
+      </div>
     </div>
   );
 }
 
-const STATUS_ITEMS: { icon: LucideIcon; name: string; key: keyof NasStatus }[] = [
-  { icon: HardDrive, name: "Synology NAS", key: "nas" },
-  { icon: Database, name: "PostgreSQL", key: "db" },
-  { icon: Box, name: "재고관리 앱", key: "inventory" },
-  { icon: Cpu, name: "챔버 에이전트", key: "chamber" },
-];
-
 export default function ServerStatus() {
-  const [data, setData] = useState<NasStatus | null>(null);
+  const [data, setData] = useState<NasData | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
     fetch("/api/nas-status")
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then((json) => {
-        if (cancelled) return;
-        setData({
-          nas: (json.nas as StatusValue) ?? "unknown",
-          db: (json.db as StatusValue) ?? "unknown",
-          inventory: (json.inventory as StatusValue) ?? "unknown",
-          chamber: (json.chamber as StatusValue) ?? "unknown",
-        });
-      })
-      .catch(() => {
-        // fetch 실패 시 "확인중"(unknown) 유지
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((r) => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {});
+
+    const timer = setInterval(() => {
+      fetch("/api/nas-status")
+        .then((r) => r.ok ? r.json() : null)
+        .then(setData)
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(timer);
   }, []);
 
-  const getStatus = (key: keyof NasStatus): StatusValue => data?.[key] ?? "unknown";
-
   return (
-    <div
-      className="bg-white rounded-[12px] p-4"
-      style={{ border: "0.5px solid #e5e7eb" }}
-    >
-      <p
-        className="font-bold uppercase tracking-widest mb-1"
-        style={{ fontSize: "11px", color: "#9ca3af", letterSpacing: "0.08em" }}
-      >
-        서버 상태
-      </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      {/* NAS 리소스 */}
+      <div className="bg-white rounded-[12px] p-4" style={{ border: "0.5px solid #e5e7eb" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+          <p style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            서버 상태
+          </p>
+          {data?.uptimeDays !== undefined && data.uptimeDays >= 0 && (
+            <span style={{ fontSize: "10px", color: "#9ca3af" }}>업타임 {data.uptimeDays}일</span>
+          )}
+        </div>
+        <MetricBar
+          label="CPU"
+          value={data?.cpu ?? 0}
+          max={100}
+          unit="%"
+          color="#3b82f6"
+        />
+        <MetricBar
+          label="RAM"
+          value={data?.ram.used ?? 0}
+          max={data?.ram.total ?? 0}
+          unit="GB"
+          color="#8b5cf6"
+        />
+        <MetricBar
+          label="디스크"
+          value={data?.disk.used ?? 0}
+          max={data?.disk.total ?? 0}
+          unit="GB"
+          color="#22c55e"
+        />
+      </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-1 gap-0 lg:divide-y lg:divide-gray-50">
-        {STATUS_ITEMS.map((item) => (
-          <StatusItem
-            key={item.name}
-            icon={item.icon}
-            name={item.name}
-            status={getStatus(item.key)}
-          />
-        ))}
+      {/* 컨테이너 */}
+      <div className="bg-white rounded-[12px] p-4" style={{ border: "0.5px solid #e5e7eb" }}>
+        <p style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>
+          컨테이너
+        </p>
+        {Object.entries(CONTAINER_LABELS).map(([key, { label, port }]) => {
+          const status = data?.containers[key] ?? "unknown";
+          const isRunning = status === "running";
+          return (
+            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "0.5px solid #f9fafb" }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>{label}</div>
+                <div style={{ fontSize: "10px", color: "#9ca3af" }}>{port}</div>
+              </div>
+              <span style={{
+                fontSize: "9px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
+                background: isRunning ? "#dcfce7" : status === "unknown" ? "#f3f4f6" : "#fee2e2",
+                color: isRunning ? "#16a34a" : status === "unknown" ? "#6b7280" : "#dc2626",
+              }}>
+                {isRunning ? "실행중" : status === "unknown" ? "확인중" : "중지"}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
