@@ -1,4 +1,4 @@
-import { Clock, type LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
 interface AppCardProps {
   icon: LucideIcon;
@@ -8,6 +8,8 @@ interface AppCardProps {
   description: string;
   href: string;
   status?: "online" | "pending";
+  stat1?: string;
+  stat2?: string;
 }
 
 export default function AppCard({
@@ -18,6 +20,8 @@ export default function AppCard({
   description,
   href,
   status = "online",
+  stat1,
+  stat2,
 }: AppCardProps) {
   const badge =
     status === "pending"
@@ -78,11 +82,25 @@ export default function AppCard({
       </div>
 
       {/* 하단 */}
-      <div className="flex items-center mt-auto pt-1">
-        <div className="flex items-center gap-1 text-gray-400" style={{ fontSize: "11px" }}>
-          <Clock size={10} strokeWidth={1.8} />
-          <span>--</span>
-        </div>
+      <div className="flex items-center gap-2 mt-auto pt-1">
+        {isPending ? (
+          <span style={{ fontSize: "11px", color: "#9ca3af" }}>개발 예정</span>
+        ) : (
+          <>
+            {stat1 && (
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>{stat1}</span>
+            )}
+            {stat1 && stat2 && (
+              <span style={{ fontSize: "11px", color: "#d1d5db" }}>·</span>
+            )}
+            {stat2 && (
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>{stat2}</span>
+            )}
+            {!stat1 && !stat2 && (
+              <span style={{ fontSize: "11px", color: "#d1d5db" }}>--</span>
+            )}
+          </>
+        )}
       </div>
     </Wrapper>
   );
