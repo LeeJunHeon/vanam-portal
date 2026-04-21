@@ -67,13 +67,15 @@ export async function GET() {
     const containerStatus: Record<string, string> = {};
     try {
       const running = safeExec("docker ps --format '{{.Names}}'").split("\n").filter(Boolean);
+      const CONTAINER_KEYWORDS: Record<string, string> = {
+        "portal": "portal",
+        "inventory-web-nextjs": "inventory",
+        "equipment-web-nextjs": "equipment",
+        "postgres": "postgres",
+      };
       for (const name of containers) {
-        const matched = running.some((r) =>
-          r.includes("portal") && name === "portal" ? true :
-          r.includes("inventory") && name === "inventory-web-nextjs" ? true :
-          r.includes("equipment") && name === "equipment-web-nextjs" ? true :
-          r.includes("postgres") && name === "postgres" ? true : false
-        );
+        const keyword = CONTAINER_KEYWORDS[name] ?? name;
+        const matched = running.some((r) => r.includes(keyword));
         containerStatus[name] = matched ? "running" : "stopped";
       }
     } catch {
