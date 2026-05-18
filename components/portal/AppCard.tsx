@@ -35,7 +35,7 @@ export default function AppCard({
   const Wrapper = isPending ? "div" : "a";
   const wrapperProps = isPending
     ? {}
-    : { href, target: "_blank" as const, rel: "noopener noreferrer" };
+    : { href };
 
   return (
     <Wrapper
