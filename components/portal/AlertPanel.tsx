@@ -31,7 +31,7 @@ export default function AlertPanel() {
     }
 
     // 장비관리 PM 이슈 조회
-    fetch(`${EQUIPMENT_BASE}/api/dashboard`)
+    fetch(`${EQUIPMENT_BASE}/api/dashboard`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;

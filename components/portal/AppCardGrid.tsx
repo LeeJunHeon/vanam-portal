@@ -19,7 +19,7 @@ export default function AppCardGrid() {
 
   useEffect(() => {
     // 재고관리 요약 (portal-summary API 추가 전까지 graceful 처리)
-    fetch(`${INVENTORY_BASE}/api/portal-summary`)
+    fetch(`${INVENTORY_BASE}/api/portal-summary`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;
@@ -29,7 +29,7 @@ export default function AppCardGrid() {
       .catch(() => {});
 
     // 장비관리 요약
-    fetch(`${EQUIPMENT_BASE}/api/dashboard`)
+    fetch(`${EQUIPMENT_BASE}/api/dashboard`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;

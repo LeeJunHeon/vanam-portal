@@ -26,7 +26,7 @@ export default function ActivityLog() {
 
   useEffect(() => {
     // 장비관리 최근 이력 조회
-    fetch(`${EQUIPMENT_BASE}/api/logs?limit=5`)
+    fetch(`${EQUIPMENT_BASE}/api/logs?limit=5`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : [])
       .then((data: { id: number; eventType: string; equipmentName: string; occurredAt: string }[]) => {
         const items: LogItem[] = data.slice(0, 5).map((d) => ({
