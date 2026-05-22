@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Wrench, Layers, Flame } from "lucide-react";
+import { Package, Wrench, Calendar, Workflow } from "lucide-react";
 import AppCard from "@/components/portal/AppCard";
 
 const INVENTORY_BASE = "https://inventory.vanam.synology.me";
 const EQUIPMENT_BASE = "https://equipment.vanam.synology.me";
-const CHAMBER_BASE = "https://chamber.vanam.synology.me";
-const EVAPORATOR_BASE = "https://evaporator.vanam.synology.me";
+const HR_BASE = "https://hr.vanam.synology.me";
+const PROCESS_BASE = "https://process.vanam.synology.me";
 
 export default function AppCardGrid() {
   const [invStat1, setInvStat1] = useState<string | undefined>(undefined);
@@ -83,22 +83,22 @@ export default function AppCardGrid() {
       stat2: eqStat2,
     },
     {
-      icon: Layers,
-      iconBgColor: "#f0fdfa",
-      iconColor: "#0d9488",
-      title: "CH1 & CH2",
-      description: "스퍼터링 공정 런 기록·레시피 관리·타겟 추적",
-      status: "pending" as const,
-      href: CHAMBER_BASE,
+      icon: Calendar,
+      iconBgColor: "#faf5ff",
+      iconColor: "#9333ea",
+      title: "근태 관리",
+      description: "WiFi 자동 출퇴근·휴가·근태 결재",
+      status: "developing" as const,
+      href: HR_BASE,
     },
     {
-      icon: Flame,
+      icon: Workflow,
       iconBgColor: "#fffbeb",
       iconColor: "#d97706",
-      title: "Evaporator",
-      description: "DAC 제어·증착률·두께 실시간 모니터링",
+      title: "공정 관리",
+      description: "공정 레시피·런 기록·파라미터 추적",
       status: "pending" as const,
-      href: EVAPORATOR_BASE,
+      href: PROCESS_BASE,
     },
   ];
 

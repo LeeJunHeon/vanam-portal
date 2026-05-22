@@ -7,7 +7,7 @@ interface AppCardProps {
   title: string;
   description: string;
   href: string;
-  status?: "online" | "offline" | "pending";
+  status?: "online" | "offline" | "pending" | "developing";
   stat1?: string;
   stat2?: string;
 }
@@ -27,7 +27,9 @@ export default function AppCard({
     status === "pending"
       ? { label: "준비중", bg: "#f3f4f6", color: "#6b7280" }
       : status === "offline"
-      ? { label: "중지",   bg: "#fee2e2", color: "#dc2626" }
+      ? { label: "중지", bg: "#fee2e2", color: "#dc2626" }
+      : status === "developing"
+      ? { label: "개발중", bg: "#fef3c7", color: "#d97706" }
       : { label: "운영중", bg: "#dcfce7", color: "#16a34a" };
 
   const isPending = status === "pending";
