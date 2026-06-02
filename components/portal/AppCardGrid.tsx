@@ -16,15 +16,16 @@ export default function AppCardGrid() {
   const [eqStat2, setEqStat2] = useState<string | undefined>(undefined);
   const [invStatus, setInvStatus] = useState<"online" | "offline" | "pending">("online");
   const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
+  const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("offline");
 
   useEffect(() => {
-    // 재고관리 요약 (portal-summary API 추가 전까지 graceful 처리)
+    // 재고관리 요약
     fetch(`${INVENTORY_BASE}/api/portal-summary`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;
         setInvStat1(`품목 ${d.totalItems ?? "--"}개`);
-        setInvStat2(`오늘 거래 ${d.todayTxCount ?? "--"}건`);
+        setInvStat2(`오늘 입고 ${d.todayIn ?? 0} · 불출 ${d.todayUse ?? 0} · 출고 ${d.todayOut ?? 0}`);
       })
       .catch(() => {});
 
@@ -48,6 +49,7 @@ export default function AppCardGrid() {
           if (!d?.containers) return;
           setInvStatus(d.containers["inventory-web-nextjs"] === "running" ? "online" : "offline");
           setEqStatus(d.containers["equipment-web-nextjs"]  === "running" ? "online" : "offline");
+          setHrStatus(d.containers["hr-nextjs"] === "running" ? "online" : "offline");
         })
         .catch(() => {});
     };
@@ -88,7 +90,7 @@ export default function AppCardGrid() {
       iconColor: "#9333ea",
       title: "근태 관리",
       description: "WiFi 자동 출퇴근·휴가·근태 결재",
-      status: "developing" as const,
+      status: hrStatus,
       href: HR_BASE,
     },
     {

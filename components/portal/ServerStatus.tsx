@@ -7,15 +7,7 @@ interface NasData {
   ram: { used: number; total: number };
   disk: { used: number; total: number };
   uptimeDays: number;
-  containers: Record<string, string>;
 }
-
-const CONTAINER_LABELS: Record<string, { label: string; port: string }> = {
-  portal: { label: "portal", port: ":3999" },
-  "inventory-web-nextjs": { label: "inventory-web", port: ":3000" },
-  "equipment-web-nextjs": { label: "equipment-web", port: ":3003" },
-  postgres: { label: "postgres (inventory)", port: ":5432" },
-};
 
 function MetricBar({ label, value, max, unit, color }: {
   label: string; value: number; max: number; unit: string; color: string;
@@ -86,32 +78,6 @@ export default function ServerStatus() {
           unit="GB"
           color="#22c55e"
         />
-      </div>
-
-      {/* 컨테이너 */}
-      <div className="bg-white rounded-[12px] p-4" style={{ border: "0.5px solid #e5e7eb" }}>
-        <p style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px" }}>
-          컨테이너
-        </p>
-        {Object.entries(CONTAINER_LABELS).map(([key, { label, port }]) => {
-          const status = data?.containers[key] ?? "unknown";
-          const isRunning = status === "running";
-          return (
-            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "0.5px solid #f9fafb" }}>
-              <div>
-                <div style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>{label}</div>
-                <div style={{ fontSize: "10px", color: "#9ca3af" }}>{port}</div>
-              </div>
-              <span style={{
-                fontSize: "9px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
-                background: isRunning ? "#dcfce7" : status === "unknown" ? "#f3f4f6" : "#fee2e2",
-                color: isRunning ? "#16a34a" : status === "unknown" ? "#6b7280" : "#dc2626",
-              }}>
-                {isRunning ? "실행중" : status === "unknown" ? "확인중" : "중지"}
-              </span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
