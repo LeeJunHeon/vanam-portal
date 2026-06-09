@@ -18,6 +18,35 @@ interface DisplayMessage {
   text: string;
   imageUrl?: string;
   isError?: boolean;
+  createdAt: number; // 메시지 생성 시각(epoch ms)
+}
+
+// ─────────────────────────────────────────────
+// 시간/날짜 포맷터
+// ─────────────────────────────────────────────
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+}
+function formatDateLabel(ts: number): string {
+  const d = new Date(ts);
+  const today = new Date();
+  if (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  ) {
+    return "오늘";
+  }
+  return d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+}
+function isSameDay(a: number, b: number): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -156,6 +185,7 @@ export default function ChatWidget() {
       role: "user",
       text,
       imageUrl: pendingImage ?? undefined,
+      createdAt: Date.now(),
     });
 
     const sentImage = pendingImage;
@@ -175,7 +205,7 @@ export default function ChatWidget() {
           res.status === 401
             ? "세션이 만료되었습니다. 새로고침 후 다시 로그인해 주세요."
             : "응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.";
-        appendDisplay({ role: "assistant", text: errMsg, isError: true });
+        appendDisplay({ role: "assistant", text: errMsg, isError: true, createdAt: Date.now() });
         return;
       }
 
@@ -183,12 +213,13 @@ export default function ChatWidget() {
       const content = data.content ?? "";
       const assistantMsg: ChatMessage = { role: "assistant", content };
       setMessages((prev) => [...prev, assistantMsg]);
-      appendDisplay({ role: "assistant", text: content || "(빈 응답)" });
+      appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
     } catch {
       appendDisplay({
         role: "assistant",
         text: "응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.",
         isError: true,
+        createdAt: Date.now(),
       });
     } finally {
       // sentImage는 user 메시지에만 들어가고, 이후 턴엔 영향 없음
@@ -270,6 +301,7 @@ export default function ChatWidget() {
         role: "assistant",
         text: "사진을 처리하지 못했습니다.",
         isError: true,
+        createdAt: Date.now(),
       });
     }
   }
@@ -328,29 +360,44 @@ export default function ChatWidget() {
 
             {displayMessages.map((m, i) => {
               const isUser = m.role === "user";
+              const prev = i > 0 ? displayMessages[i - 1] : null;
+              const showDateDivider = !prev || !isSameDay(prev.createdAt, m.createdAt);
               return (
-                <div
-                  key={i}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-3 py-2 text-[13px] whitespace-pre-wrap break-words ${
-                      isUser
-                        ? "bg-blue-500 text-white"
-                        : m.isError
-                        ? "bg-red-50 text-red-700 border border-red-100"
-                        : "bg-white text-gray-800 border border-gray-100"
-                    }`}
-                  >
-                    {m.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.imageUrl}
-                        alt="첨부 이미지"
-                        className="rounded-lg mb-1 max-w-full"
-                      />
-                    )}
-                    {m.text || (m.imageUrl ? "" : "")}
+                <div key={i}>
+                  {showDateDivider && (
+                    <div className="flex items-center gap-2 my-2">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-white border border-gray-100">
+                        {formatDateLabel(m.createdAt)}
+                      </span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                  )}
+                  <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                    <div className={`flex flex-col max-w-[80%] ${isUser ? "items-end" : "items-start"}`}>
+                      <div
+                        className={`rounded-2xl px-3 py-2 text-[13px] whitespace-pre-wrap break-words ${
+                          isUser
+                            ? "bg-blue-500 text-white"
+                            : m.isError
+                            ? "bg-red-50 text-red-700 border border-red-100"
+                            : "bg-white text-gray-800 border border-gray-100"
+                        }`}
+                      >
+                        {m.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.imageUrl}
+                            alt="첨부 이미지"
+                            className="rounded-lg mb-1 max-w-full"
+                          />
+                        )}
+                        {m.text || (m.imageUrl ? "" : "")}
+                      </div>
+                      <span className="text-[10px] text-gray-400 mt-0.5 px-1">
+                        {formatTime(m.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
