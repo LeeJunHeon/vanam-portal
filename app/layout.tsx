@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
+import { auth } from "@/auth";
 import ChatWidget from "@/components/portal/ChatWidget";
 import "./globals.css";
 
@@ -8,9 +9,12 @@ export const metadata: Metadata = {
   description: "VanaM 통합 플랫폼",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // 서버 사이드 세션 확인 — 미인증 사용자에게는 ChatWidget을 HTML에 포함시키지 않음
+  const session = await auth();
+
   return (
     <html lang="ko">
       <head>
@@ -22,7 +26,7 @@ export default function RootLayout({
       <body>
         <SessionProvider>
           {children}
-          <ChatWidget />
+          {session?.user && <ChatWidget />}
         </SessionProvider>
       </body>
     </html>
