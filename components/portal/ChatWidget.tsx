@@ -293,6 +293,7 @@ export default function ChatWidget() {
     const body: Record<string, unknown> = {
       txType: isOutbound ? (proposal.txType ?? "출고") : "입고",
       itemId: proposal.itemId,
+      itemName: proposal.itemName, // 포털이 itemName으로 itemId를 재확정(LLM itemId 오류 교정)
       qty: proposal.qty,
       locationId: proposal.locationId,
       memo: proposal.memo ?? "",
