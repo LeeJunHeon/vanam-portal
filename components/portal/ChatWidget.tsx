@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Mic, Camera } from "lucide-react";
+import { MessageCircle, X, Send, Mic, Camera, Trash2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type TextPart = { type: "text"; text: string };
 type ImagePart = { type: "image_url"; image_url: { url: string } };
@@ -160,7 +161,26 @@ function parseInventoryProposal(
   return null;
 }
 
+// ─────────────────────────────────────────────
+// 대화 기록 로컬 저장 (사용자별 / 오늘 KST 날짜만)
+// ─────────────────────────────────────────────
+const CHAT_STORAGE_KEY = "vanam_chat_history";
+
+interface StoredChat {
+  email: string;
+  date: string; // YYYY-MM-DD (KST)
+  messages: ChatMessage[];
+  displayMessages: DisplayMessage[];
+}
+
+function todayKst(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
 export default function ChatWidget() {
+  const { data: session } = useSession();
+  const userEmail = session?.user?.email ?? null;
+
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
@@ -174,6 +194,7 @@ export default function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseInputRef = useRef<string>(""); // 인식 시작 시점의 입력값
+  const restoredRef = useRef(false); // 대화 복원 1회 실행 플래그
 
   // 음성 인식 지원 여부 체크
   useEffect(() => {
@@ -201,6 +222,62 @@ export default function ChatWidget() {
       setListening(false);
     }
   }, [open]);
+
+  // 대화 복원: userEmail 확정 후 1회만. 같은 사용자 + 오늘 날짜일 때만 복원.
+  useEffect(() => {
+    if (restoredRef.current) return;
+    if (typeof window === "undefined") return;
+    if (!userEmail) return; // 세션 로딩 중이거나 비로그인 → 확정될 때까지 대기
+    restoredRef.current = true;
+    try {
+      const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as Partial<StoredChat>;
+      if (
+        stored.email === userEmail &&
+        stored.date === todayKst() &&
+        Array.isArray(stored.messages) &&
+        Array.isArray(stored.displayMessages)
+      ) {
+        setMessages(stored.messages);
+        setDisplayMessages(stored.displayMessages);
+      }
+      // 조건 불일치(다른 사용자/지난 날짜)는 조용히 무시 — 다음 저장 때 갱신됨
+    } catch {
+      /* 파싱/접근 실패 → 무시 */
+    }
+  }, [userEmail]);
+
+  // 대화 저장: messages/displayMessages 변경 시. 로그인 상태에서만.
+  useEffect(() => {
+    if (!restoredRef.current) return; // 복원 전 빈 상태로 덮어쓰지 않도록
+    if (typeof window === "undefined") return;
+    if (!userEmail) return;
+    if (displayMessages.length === 0) return; // 빈 대화는 저장하지 않음(복원 직후 덮어쓰기 방지)
+    try {
+      const payload: StoredChat = {
+        email: userEmail,
+        date: todayKst(),
+        messages,
+        displayMessages,
+      };
+      window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      /* 용량 초과 등 → 무시 */
+    }
+  }, [messages, displayMessages, userEmail]);
+
+  function handleClearChat() {
+    setMessages([]);
+    setDisplayMessages([]);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(CHAT_STORAGE_KEY);
+      } catch {
+        /* 무시 */
+      }
+    }
+  }
 
   function appendDisplay(msg: DisplayMessage) {
     setDisplayMessages((prev) => [...prev, msg]);
@@ -462,13 +539,25 @@ export default function ChatWidget() {
                 <p className="text-[10px] text-gray-400">OpenClaw</p>
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="닫기"
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-0.5">
+              {displayMessages.length > 0 && (
+                <button
+                  onClick={handleClearChat}
+                  aria-label="대화 지우기"
+                  title="대화 지우기"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="닫기"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* 메시지 영역 */}
