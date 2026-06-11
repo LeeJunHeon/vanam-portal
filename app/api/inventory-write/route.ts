@@ -23,13 +23,69 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
-  if (!body?.txType || !body?.itemId) {
+  // itemName이 있으면 itemId는 시스템이 재확정하므로 필수가 아니다.
+  // 둘 다 없으면 그대로 재고앱이 검증하도록 넘긴다(여기서 막지 않음).
+  const itemName = typeof body.itemName === "string" ? body.itemName.trim() : "";
+  if (!body?.txType) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
+  // ── itemName → itemId 재확정 ───────────────────────────────────────────
+  // 배경: gemma(LLM)가 멀티턴에서 제안 JSON의 itemId 숫자를 틀리는 경우가 있다.
+  // 원칙 "LLM은 이름, 시스템은 ID": itemName이 있으면 LLM의 itemId를 신뢰하지 않고
+  // 재고앱 조회 API로 정확한 itemId를 다시 찾아 확정한다. (입고/출고 공통 경로)
+  let resolvedItemId: unknown = body.itemId;
+  if (itemName) {
+    // 조회 인증 토큰: 우선 INVENTORY_WRITE_TOKEN으로 시도.
+    // (재고앱 internal/items가 MCP_API_TOKEN만 허용하면 401/403 → 아래에서 명확히 에러 반환.
+    //  실제 토큰 호환성은 배포 후 테스트로 확인 예정.)
+    let items: Array<{ id: number; name: string }>;
+    try {
+      const lookup = await fetch(
+        `${apiUrl}/api/internal/items?search=${encodeURIComponent(itemName)}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${writeToken}` },
+          signal: AbortSignal.timeout(15000),
+        }
+      );
+      if (lookup.status === 401 || lookup.status === 403) {
+        return NextResponse.json({ error: "품목 조회 인증 실패" }, { status: 502 });
+      }
+      if (!lookup.ok) {
+        const detail = await lookup.text();
+        return NextResponse.json({ error: "item_lookup_failed", detail }, { status: 502 });
+      }
+      const parsed = await lookup.json();
+      items = Array.isArray(parsed) ? parsed : [];
+    } catch (e: unknown) {
+      const name =
+        typeof e === "object" && e && "name" in e ? (e as { name: string }).name : "";
+      const reason = name === "TimeoutError" ? "timeout" : "item_lookup_unreachable";
+      return NextResponse.json({ error: reason }, { status: 504 });
+    }
+
+    // 우선순위: ① 정확 일치(trim 후 ===) 1개 → ② 정확일치 없고 검색결과 1개 → ③ 그 외 400
+    const exact = items.filter(
+      (it) => typeof it?.name === "string" && it.name.trim() === itemName
+    );
+    if (exact.length === 1) {
+      resolvedItemId = exact[0].id;
+    } else if (exact.length === 0 && items.length === 1) {
+      resolvedItemId = items[0].id;
+    } else {
+      return NextResponse.json(
+        { error: "품목을 특정할 수 없습니다. 품목명을 더 정확히 말씀해 주세요." },
+        { status: 400 }
+      );
+    }
+  }
+
   // txDate 보강: 없으면 오늘 날짜(KST, YYYY-MM-DD)로 채움 (sv-SE 로케일이 YYYY-MM-DD 형식)
+  // itemId는 항상 시스템이 확정한 값으로 덮어쓴다(LLM이 보낸 itemId는 무시).
   const bodyWithDate = {
     ...body,
+    itemId: resolvedItemId,
     txDate: body.txDate ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }),
   };
 
