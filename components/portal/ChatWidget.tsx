@@ -12,7 +12,7 @@ interface ChatMessage {
   content: string | ContentPart[];
 }
 
-// 입고 제안(챗봇 응답 마커에서 파싱)
+// 입고/출고 제안(챗봇 응답 마커에서 파싱)
 interface InventoryProposal {
   action: string;
   itemId: number;
@@ -21,6 +21,8 @@ interface InventoryProposal {
   locationId: number;
   locationName: string;
   memo?: string;
+  txType?: string;        // "입고" | "출고" (없으면 입고로 간주)
+  refTxNo?: string;       // 출고 시 어느 입고분에서 빼는지 (입고 전표번호)
 }
 
 // 화면 표시용 메시지(첨부 이미지 미리보기 포함)
@@ -140,12 +142,15 @@ function parseInventoryProposal(
   if (!match) return null;
   try {
     const parsed = JSON.parse(match[1].trim()) as Partial<InventoryProposal>;
-    if (
-      parsed.action === "inventory_inbound" &&
+    const commonValid =
+      (parsed.action === "inventory_inbound" || parsed.action === "inventory_outbound") &&
       typeof parsed.itemId === "number" &&
       typeof parsed.qty === "number" &&
-      typeof parsed.locationId === "number"
-    ) {
+      typeof parsed.locationId === "number";
+    // 출고는 refTxNo(어느 입고분에서 빼는지)가 반드시 있어야 유효
+    const outboundValid =
+      parsed.action !== "inventory_outbound" || typeof parsed.refTxNo === "string";
+    if (commonValid && outboundValid) {
       const cleanedText = content.replace(match[0], "").trim();
       return { data: parsed as InventoryProposal, cleanedText };
     }
@@ -206,17 +211,21 @@ export default function ChatWidget() {
     setDisplayMessages((prev) =>
       prev.map((m, i) => (i === index ? { ...m, proposalStatus: "submitting" } : m))
     );
+    const isOutbound = proposal.action === "inventory_outbound";
+    const label = isOutbound ? "출고" : "입고"; // 사용자 메시지용 (입고는 기존과 동일)
+    const body: Record<string, unknown> = {
+      txType: isOutbound ? (proposal.txType ?? "출고") : "입고",
+      itemId: proposal.itemId,
+      qty: proposal.qty,
+      locationId: proposal.locationId,
+      memo: proposal.memo ?? "",
+    };
+    if (proposal.refTxNo) body.refTxNo = proposal.refTxNo;
     try {
       const res = await fetch("/api/inventory-write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          txType: "입고",
-          itemId: proposal.itemId,
-          qty: proposal.qty,
-          locationId: proposal.locationId,
-          memo: proposal.memo ?? "",
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const detail = await res.text();
@@ -225,7 +234,7 @@ export default function ChatWidget() {
         );
         appendDisplay({
           role: "assistant",
-          text: `입고 실패: ${detail}`,
+          text: `${label} 실패: ${detail}`,
           isError: true,
           createdAt: Date.now(),
         });
@@ -237,7 +246,7 @@ export default function ChatWidget() {
       );
       appendDisplay({
         role: "assistant",
-        text: `입고 완료되었습니다. (전표번호: ${data.txNo ?? "?"})`,
+        text: `${label} 완료되었습니다. (전표번호: ${data.txNo ?? "?"})`,
         createdAt: Date.now(),
       });
     } catch {
@@ -246,7 +255,7 @@ export default function ChatWidget() {
       );
       appendDisplay({
         role: "assistant",
-        text: "입고 처리 중 오류가 발생했습니다.",
+        text: `${label} 처리 중 오류가 발생했습니다.`,
         isError: true,
         createdAt: Date.now(),
       });
@@ -509,10 +518,12 @@ export default function ChatWidget() {
                         </div>
                       )}
 
-                      {/* 입고 요청 확인 카드 */}
+                      {/* 입고/출고 요청 확인 카드 */}
                       {m.proposal && (
                         <div className="mt-1 w-full rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5">
-                          <p className="text-[12px] font-bold text-blue-900 mb-1.5">입고 요청 확인</p>
+                          <p className="text-[12px] font-bold text-blue-900 mb-1.5">
+                            {m.proposal.action === "inventory_outbound" ? "출고 요청 확인" : "입고 요청 확인"}
+                          </p>
                           <dl className="space-y-0.5 text-[12px] text-gray-700">
                             <div className="flex gap-2">
                               <dt className="text-gray-400 shrink-0 w-10">품목</dt>
@@ -526,6 +537,14 @@ export default function ChatWidget() {
                               <dt className="text-gray-400 shrink-0 w-10">위치</dt>
                               <dd className="font-medium text-gray-900 break-words">{m.proposal.locationName}</dd>
                             </div>
+                            {m.proposal.action === "inventory_outbound" && m.proposal.refTxNo && (
+                              <div className="flex gap-2">
+                                <dt className="text-gray-400 shrink-0 w-10">출고 대상</dt>
+                                <dd className="font-medium text-gray-900 break-words">
+                                  입고 전표 {m.proposal.refTxNo}
+                                </dd>
+                              </div>
+                            )}
                           </dl>
 
                           {m.proposalStatus === "pending" && (
