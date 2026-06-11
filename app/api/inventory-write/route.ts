@@ -12,7 +12,8 @@ export async function POST(req: Request) {
   }
 
   const apiUrl = process.env.INVENTORY_API_URL;
-  const writeToken = process.env.INVENTORY_WRITE_TOKEN;
+  const writeToken = process.env.INVENTORY_WRITE_TOKEN; // 쓰기(internal/inventory)용
+  const mcpToken = process.env.MCP_API_TOKEN;           // 조회(internal/items)용
   if (!apiUrl || !writeToken) {
     return NextResponse.json({ error: "inventory_api_not_configured" }, { status: 500 });
   }
@@ -36,16 +37,18 @@ export async function POST(req: Request) {
   // 재고앱 조회 API로 정확한 itemId를 다시 찾아 확정한다. (입고/출고 공통 경로)
   let resolvedItemId: unknown = body.itemId;
   if (itemName) {
-    // 조회 인증 토큰: 우선 INVENTORY_WRITE_TOKEN으로 시도.
-    // (재고앱 internal/items가 MCP_API_TOKEN만 허용하면 401/403 → 아래에서 명확히 에러 반환.
-    //  실제 토큰 호환성은 배포 후 테스트로 확인 예정.)
+    // 조회 인증 토큰: 재고앱 조회 API(internal/items)는 requireInternalAuth가
+    // MCP_API_TOKEN만 받는다(쓰기용 INVENTORY_WRITE_TOKEN은 거부). → 조회엔 mcpToken 사용.
+    if (!mcpToken) {
+      return NextResponse.json({ error: "MCP_API_TOKEN 미설정" }, { status: 500 });
+    }
     let items: Array<{ id: number; name: string }>;
     try {
       const lookup = await fetch(
         `${apiUrl}/api/internal/items?search=${encodeURIComponent(itemName)}`,
         {
           method: "GET",
-          headers: { Authorization: `Bearer ${writeToken}` },
+          headers: { Authorization: `Bearer ${mcpToken}` }, // 조회=MCP_API_TOKEN, 쓰기=INVENTORY_WRITE_TOKEN
           signal: AbortSignal.timeout(15000),
         }
       );
