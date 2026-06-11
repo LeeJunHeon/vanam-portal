@@ -12,6 +12,17 @@ interface ChatMessage {
   content: string | ContentPart[];
 }
 
+// 입고 제안(챗봇 응답 마커에서 파싱)
+interface InventoryProposal {
+  action: string;
+  itemId: number;
+  itemName: string;
+  qty: number;
+  locationId: number;
+  locationName: string;
+  memo?: string;
+}
+
 // 화면 표시용 메시지(첨부 이미지 미리보기 포함)
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -19,6 +30,8 @@ interface DisplayMessage {
   imageUrl?: string;
   isError?: boolean;
   createdAt: number; // 메시지 생성 시각(epoch ms)
+  proposal?: InventoryProposal;
+  proposalStatus?: "pending" | "confirmed" | "cancelled" | "submitting" | "done" | "failed";
 }
 
 // ─────────────────────────────────────────────
@@ -115,6 +128,33 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.8);
 }
 
+// ─────────────────────────────────────────────
+// 입고 제안 마커 파싱
+// <<INVENTORY_PROPOSAL>> { ...json... } <<END>> 형태를 추출.
+// 실패하면 null 반환(호출부에서 일반 텍스트로 폴백).
+// ─────────────────────────────────────────────
+function parseInventoryProposal(
+  content: string
+): { data: InventoryProposal; cleanedText: string } | null {
+  const match = content.match(/<<INVENTORY_PROPOSAL>>([\s\S]*?)<<END>>/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1].trim()) as Partial<InventoryProposal>;
+    if (
+      parsed.action === "inventory_inbound" &&
+      typeof parsed.itemId === "number" &&
+      typeof parsed.qty === "number" &&
+      typeof parsed.locationId === "number"
+    ) {
+      const cleanedText = content.replace(match[0], "").trim();
+      return { data: parsed as InventoryProposal, cleanedText };
+    }
+  } catch {
+    /* 파싱 실패 → 폴백 */
+  }
+  return null;
+}
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -160,6 +200,64 @@ export default function ChatWidget() {
   function appendDisplay(msg: DisplayMessage) {
     setDisplayMessages((prev) => [...prev, msg]);
   }
+
+  const handleConfirmProposal = async (index: number, proposal: InventoryProposal) => {
+    // 해당 메시지 상태를 submitting으로
+    setDisplayMessages((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, proposalStatus: "submitting" } : m))
+    );
+    try {
+      const res = await fetch("/api/inventory-write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          txType: "입고",
+          itemId: proposal.itemId,
+          qty: proposal.qty,
+          locationId: proposal.locationId,
+          memo: proposal.memo ?? "",
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.text();
+        setDisplayMessages((prev) =>
+          prev.map((m, i) => (i === index ? { ...m, proposalStatus: "failed" } : m))
+        );
+        appendDisplay({
+          role: "assistant",
+          text: `입고 실패: ${detail}`,
+          isError: true,
+          createdAt: Date.now(),
+        });
+        return;
+      }
+      const data = await res.json();
+      setDisplayMessages((prev) =>
+        prev.map((m, i) => (i === index ? { ...m, proposalStatus: "done" } : m))
+      );
+      appendDisplay({
+        role: "assistant",
+        text: `입고 완료되었습니다. (전표번호: ${data.txNo ?? "?"})`,
+        createdAt: Date.now(),
+      });
+    } catch {
+      setDisplayMessages((prev) =>
+        prev.map((m, i) => (i === index ? { ...m, proposalStatus: "failed" } : m))
+      );
+      appendDisplay({
+        role: "assistant",
+        text: "입고 처리 중 오류가 발생했습니다.",
+        isError: true,
+        createdAt: Date.now(),
+      });
+    }
+  };
+
+  const handleCancelProposal = (index: number) => {
+    setDisplayMessages((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, proposalStatus: "cancelled" } : m))
+    );
+  };
 
   async function send() {
     const text = input.trim();
@@ -212,8 +310,22 @@ export default function ChatWidget() {
       const data: { content?: string } = await res.json();
       const content = data.content ?? "";
       const assistantMsg: ChatMessage = { role: "assistant", content };
+      // 전송용 히스토리에는 항상 원본 content를 그대로 저장 (마커 포함)
       setMessages((prev) => [...prev, assistantMsg]);
-      appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
+
+      // 화면 표시용: 입고 제안 마커 감지 → 카드로 표시, 실패 시 일반 텍스트 폴백
+      const proposal = parseInventoryProposal(content);
+      if (proposal) {
+        appendDisplay({
+          role: "assistant",
+          text: proposal.cleanedText,
+          proposal: proposal.data,
+          proposalStatus: "pending",
+          createdAt: Date.now(),
+        });
+      } else {
+        appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
+      }
     } catch {
       appendDisplay({
         role: "assistant",
@@ -375,25 +487,78 @@ export default function ChatWidget() {
                   )}
                   <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`flex flex-col max-w-[80%] ${isUser ? "items-end" : "items-start"}`}>
-                      <div
-                        className={`rounded-2xl px-3 py-2 text-[13px] whitespace-pre-wrap break-words ${
-                          isUser
-                            ? "bg-blue-500 text-white"
-                            : m.isError
-                            ? "bg-red-50 text-red-700 border border-red-100"
-                            : "bg-white text-gray-800 border border-gray-100"
-                        }`}
-                      >
-                        {m.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.imageUrl}
-                            alt="첨부 이미지"
-                            className="rounded-lg mb-1 max-w-full"
-                          />
-                        )}
-                        {m.text || (m.imageUrl ? "" : "")}
-                      </div>
+                      {(m.text || m.imageUrl) && (
+                        <div
+                          className={`rounded-2xl px-3 py-2 text-[13px] whitespace-pre-wrap break-words ${
+                            isUser
+                              ? "bg-blue-500 text-white"
+                              : m.isError
+                              ? "bg-red-50 text-red-700 border border-red-100"
+                              : "bg-white text-gray-800 border border-gray-100"
+                          }`}
+                        >
+                          {m.imageUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={m.imageUrl}
+                              alt="첨부 이미지"
+                              className="rounded-lg mb-1 max-w-full"
+                            />
+                          )}
+                          {m.text}
+                        </div>
+                      )}
+
+                      {/* 입고 요청 확인 카드 */}
+                      {m.proposal && (
+                        <div className="mt-1 w-full rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5">
+                          <p className="text-[12px] font-bold text-blue-900 mb-1.5">입고 요청 확인</p>
+                          <dl className="space-y-0.5 text-[12px] text-gray-700">
+                            <div className="flex gap-2">
+                              <dt className="text-gray-400 shrink-0 w-10">품목</dt>
+                              <dd className="font-medium text-gray-900 break-words">{m.proposal.itemName}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt className="text-gray-400 shrink-0 w-10">수량</dt>
+                              <dd className="font-medium text-gray-900">{m.proposal.qty}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt className="text-gray-400 shrink-0 w-10">위치</dt>
+                              <dd className="font-medium text-gray-900 break-words">{m.proposal.locationName}</dd>
+                            </div>
+                          </dl>
+
+                          {m.proposalStatus === "pending" && (
+                            <div className="flex gap-2 mt-2.5">
+                              <button
+                                onClick={() => handleConfirmProposal(i, m.proposal!)}
+                                className="flex-1 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-bold transition-colors"
+                              >
+                                확인
+                              </button>
+                              <button
+                                onClick={() => handleCancelProposal(i)}
+                                className="flex-1 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-600 text-[12px] font-medium border border-gray-200 transition-colors"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          )}
+                          {m.proposalStatus === "submitting" && (
+                            <p className="mt-2.5 text-[12px] text-gray-500 font-medium">처리 중...</p>
+                          )}
+                          {m.proposalStatus === "done" && (
+                            <p className="mt-2.5 text-[12px] text-green-600 font-bold">✓ 입고 완료</p>
+                          )}
+                          {m.proposalStatus === "cancelled" && (
+                            <p className="mt-2.5 text-[12px] text-gray-400 font-medium">취소됨</p>
+                          )}
+                          {m.proposalStatus === "failed" && (
+                            <p className="mt-2.5 text-[12px] text-red-500 font-bold">실패</p>
+                          )}
+                        </div>
+                      )}
+
                       <span className="text-[10px] text-gray-400 mt-0.5 px-1">
                         {formatTime(m.createdAt)}
                       </span>

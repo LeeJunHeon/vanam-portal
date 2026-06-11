@@ -27,6 +27,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
+  // txDate 보강: 없으면 오늘 날짜(KST, YYYY-MM-DD)로 채움 (sv-SE 로케일이 YYYY-MM-DD 형식)
+  const bodyWithDate = {
+    ...body,
+    txDate: body.txDate ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }),
+  };
+
   try {
     const upstream = await fetch(`${apiUrl}/api/internal/inventory`, {
       method: "POST",
@@ -35,7 +41,7 @@ export async function POST(req: Request) {
         "x-acting-user-email": email,   // ★ 세션 email만 사용 (클라이언트 body의 값은 무시, 신원 위조 방지)
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(bodyWithDate),
       signal: AbortSignal.timeout(30000),
     });
 
