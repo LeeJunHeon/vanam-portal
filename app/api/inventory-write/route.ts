@@ -48,6 +48,10 @@ function lookupEndpoint(
       return { kind: "list", path: "/api/internal/locations" };
     case "list_categories":
       return { kind: "list", path: "/api/internal/categories" };
+    case "search_users":
+      return { kind: "search", path: "/api/internal/users" };
+    case "list_tx_reasons":
+      return { kind: "list", path: "/api/internal/tx-reasons" };
     default:
       return null; // search_partners, search_users 등 아직 조회 API 없음 → id 그대로 사용
   }
