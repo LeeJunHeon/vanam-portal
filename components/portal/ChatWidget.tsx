@@ -367,6 +367,21 @@ export default function ChatWidget() {
       // 작업 완료 → gemma에 보내는 대화 맥락만 초기화 (다음 작업이 깨끗한 상태에서 시작).
       // displayMessages(화면 기록)는 그대로 유지되므로 사용자에게는 기록이 남는다.
       setMessages([]);
+      // localStorage에 저장된 messages도 즉시 빈 배열로 갱신한다.
+      // (이렇게 하지 않으면 새로고침 시 복원 useEffect가 옛 맥락을 되살려 gemma가 직전 작업을 그대로 베낀다.)
+      // displayMessages는 유지하므로 화면 기록은 보존된다.
+      if (typeof window !== "undefined") {
+        try {
+          const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+          if (raw) {
+            const stored = JSON.parse(raw) as { messages?: unknown; displayMessages?: unknown };
+            stored.messages = [];
+            window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stored));
+          }
+        } catch {
+          /* 무시 */
+        }
+      }
     } catch {
       setDisplayMessages((prev) =>
         prev.map((m, i) => (i === index ? { ...m, proposalStatus: "failed" } : m))
