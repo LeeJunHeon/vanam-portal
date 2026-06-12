@@ -42,6 +42,8 @@ function lookupEndpoint(
   switch (lookup) {
     case "search_items":
       return { kind: "search", path: "/api/internal/items" };
+    case "search_partners":
+      return { kind: "search", path: "/api/internal/partners" };
     case "list_locations":
       return { kind: "list", path: "/api/internal/locations" };
     case "list_categories":
