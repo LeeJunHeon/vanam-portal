@@ -13,17 +13,19 @@ interface ChatMessage {
   content: string | ContentPart[];
 }
 
-// 입고/출고 제안(챗봇 응답 마커에서 파싱)
-interface InventoryProposal {
-  action: string;
-  itemId: number;
-  itemName: string;
-  qty: number;
-  locationId: number;
-  locationName: string;
-  memo?: string;
-  txType?: string;        // "입고" | "출고" (없으면 입고로 간주)
-  refTxNo?: string;       // 출고 시 어느 입고분에서 빼는지 (입고 전표번호)
+// 스키마 (포털 /api/schemas 응답)
+interface SchemaField { name: string; label: string; type: string; required?: boolean; auto?: boolean | string; }
+interface SchemaOp {
+  id: string;
+  label: string;
+  cardTitle?: string;
+  cardShow?: string[];     // 카드에 보일 필드명 순서
+  fields?: SchemaField[];
+}
+// gemma가 출력한 작업 데이터
+interface OperationData {
+  opId: string;
+  values: Record<string, unknown>;  // 수집된 필드값들 (itemName 등 이름 포함)
 }
 
 // 화면 표시용 메시지(첨부 이미지 미리보기 포함)
@@ -33,7 +35,7 @@ interface DisplayMessage {
   imageUrl?: string;
   isError?: boolean;
   createdAt: number; // 메시지 생성 시각(epoch ms)
-  proposal?: InventoryProposal;
+  proposal?: OperationData;
   proposalStatus?: "pending" | "confirmed" | "cancelled" | "submitting" | "done" | "failed";
 }
 
@@ -132,33 +134,57 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
 }
 
 // ─────────────────────────────────────────────
-// 입고 제안 마커 파싱
-// <<INVENTORY_PROPOSAL>> { ...json... } <<END>> 형태를 추출.
+// 작업 데이터 마커 파싱
+// <<DATA>> { "opId":"...", "필드":"값", ... } <<END>> 형태를 추출.
 // 실패하면 null 반환(호출부에서 일반 텍스트로 폴백).
 // ─────────────────────────────────────────────
-function parseInventoryProposal(
-  content: string
-): { data: InventoryProposal; cleanedText: string } | null {
-  const match = content.match(/<<INVENTORY_PROPOSAL>>([\s\S]*?)<<END>>/);
+function parseOperationData(content: string): { data: OperationData; cleanedText: string } | null {
+  const match = content.match(/<<DATA>>([\s\S]*?)<<END>>/);
   if (!match) return null;
   try {
-    const parsed = JSON.parse(match[1].trim()) as Partial<InventoryProposal>;
-    const commonValid =
-      (parsed.action === "inventory_inbound" || parsed.action === "inventory_outbound") &&
-      typeof parsed.itemId === "number" &&
-      typeof parsed.qty === "number" &&
-      typeof parsed.locationId === "number";
-    // 출고는 refTxNo(어느 입고분에서 빼는지)가 반드시 있어야 유효
-    const outboundValid =
-      parsed.action !== "inventory_outbound" || typeof parsed.refTxNo === "string";
-    if (commonValid && outboundValid) {
-      const cleanedText = content.replace(match[0], "").trim();
-      return { data: parsed as InventoryProposal, cleanedText };
+    const obj = JSON.parse(match[1].trim()) as Record<string, unknown>;
+    const opId = typeof obj.opId === "string" ? obj.opId : "";
+    if (!opId) return null;
+    // values = opId를 제외한 나머지 전부
+    const values: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (k !== "opId") values[k] = v;
     }
+    const cleanedText = content.replace(match[0], "").trim();
+    return { data: { opId, values }, cleanedText };
   } catch {
-    /* 파싱 실패 → 폴백 */
+    return null;
   }
-  return null;
+}
+
+// 확인 카드 내용 생성: 스키마 cardShow 기반. op 없거나 cardShow 없으면 values 나열(폴백).
+// id_ref 필드는 이름값(...Name)을 우선 표시. 값 없는 필드는 건너뜀.
+function buildCard(
+  op: SchemaOp | undefined,
+  data: OperationData
+): { title: string; rows: { label: string; value: string }[] } {
+  const title = op?.cardTitle ?? op?.label ?? "확인";
+  const rows: { label: string; value: string }[] = [];
+  const toText = (v: unknown): string =>
+    v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+
+  if (op?.cardShow && op.cardShow.length > 0) {
+    for (const f of op.cardShow) {
+      const nameKey = f.replace(/Id$/, "Name");
+      const value = toText(data.values[nameKey] ?? data.values[f]);
+      if (value === "") continue; // 값 없으면 줄 건너뜀
+      const field = op.fields?.find((x) => x.name === f);
+      rows.push({ label: field?.label ?? f, value });
+    }
+  } else {
+    // 폴백: op 없음/ cardShow 없음 → values를 키-값으로 나열
+    for (const [k, v] of Object.entries(data.values)) {
+      const value = toText(v);
+      if (value === "") continue;
+      rows.push({ label: k, value });
+    }
+  }
+  return { title, rows };
 }
 
 // ─────────────────────────────────────────────
@@ -189,6 +215,7 @@ export default function ChatWidget() {
   const [isSending, setIsSending] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [schemas, setSchemas] = useState<SchemaOp[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -205,6 +232,25 @@ export default function ChatWidget() {
     };
     setSpeechSupported(Boolean(w.SpeechRecognition || w.webkitSpeechRecognition));
   }, []);
+
+  // 작업 스키마 로드 (로그인 후 1회). 실패하면 빈 배열 유지(카드 폴백 동작).
+  useEffect(() => {
+    if (!userEmail) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/schemas", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) setSchemas(data);
+      } catch {
+        /* 무시 → 빈 배열 유지 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userEmail]);
 
   // 메시지 추가 시 하단 스크롤
   useEffect(() => {
@@ -283,27 +329,18 @@ export default function ChatWidget() {
     setDisplayMessages((prev) => [...prev, msg]);
   }
 
-  const handleConfirmProposal = async (index: number, proposal: InventoryProposal) => {
-    // 해당 메시지 상태를 submitting으로
+  const handleConfirmProposal = async (index: number, data: OperationData) => {
+    // submitting 표시
     setDisplayMessages((prev) =>
       prev.map((m, i) => (i === index ? { ...m, proposalStatus: "submitting" } : m))
     );
-    const isOutbound = proposal.action === "inventory_outbound";
-    const label = isOutbound ? "출고" : "입고"; // 사용자 메시지용 (입고는 기존과 동일)
-    const body: Record<string, unknown> = {
-      txType: isOutbound ? (proposal.txType ?? "출고") : "입고",
-      itemId: proposal.itemId,
-      itemName: proposal.itemName, // 포털이 itemName으로 itemId를 재확정(LLM itemId 오류 교정)
-      qty: proposal.qty,
-      locationId: proposal.locationId,
-      memo: proposal.memo ?? "",
-    };
-    if (proposal.refTxNo) body.refTxNo = proposal.refTxNo;
+    const op = schemas.find((s) => s.id === data.opId);
+    const opLabel = op?.label ?? "작업";
     try {
       const res = await fetch("/api/inventory-write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ opId: data.opId, values: data.values }),
       });
       if (!res.ok) {
         const detail = await res.text();
@@ -312,19 +349,19 @@ export default function ChatWidget() {
         );
         appendDisplay({
           role: "assistant",
-          text: `${label} 실패: ${detail}`,
+          text: `${opLabel} 실패: ${detail}`,
           isError: true,
           createdAt: Date.now(),
         });
         return;
       }
-      const data = await res.json();
+      await res.json().catch(() => ({}));
       setDisplayMessages((prev) =>
         prev.map((m, i) => (i === index ? { ...m, proposalStatus: "done" } : m))
       );
       appendDisplay({
         role: "assistant",
-        text: `${label} 완료되었습니다. (전표번호: ${data.txNo ?? "?"})`,
+        text: `${opLabel} 완료되었습니다.`,
         createdAt: Date.now(),
       });
     } catch {
@@ -333,7 +370,7 @@ export default function ChatWidget() {
       );
       appendDisplay({
         role: "assistant",
-        text: `${label} 처리 중 오류가 발생했습니다.`,
+        text: `${opLabel} 처리 중 오류가 발생했습니다.`,
         isError: true,
         createdAt: Date.now(),
       });
@@ -400,8 +437,8 @@ export default function ChatWidget() {
       // 전송용 히스토리에는 항상 원본 content를 그대로 저장 (마커 포함)
       setMessages((prev) => [...prev, assistantMsg]);
 
-      // 화면 표시용: 입고 제안 마커 감지 → 카드로 표시, 실패 시 일반 텍스트 폴백
-      const proposal = parseInventoryProposal(content);
+      // 화면 표시용: 작업 데이터 마커 감지 → 카드로 표시, 실패 시 일반 텍스트 폴백
+      const proposal = parseOperationData(content);
       if (proposal) {
         appendDisplay({
           role: "assistant",
@@ -608,65 +645,54 @@ export default function ChatWidget() {
                         </div>
                       )}
 
-                      {/* 입고/출고 요청 확인 카드 */}
-                      {m.proposal && (
-                        <div className="mt-1 w-full rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5">
-                          <p className="text-[12px] font-bold text-blue-900 mb-1.5">
-                            {m.proposal.action === "inventory_outbound" ? "출고 요청 확인" : "입고 요청 확인"}
-                          </p>
-                          <dl className="space-y-0.5 text-[12px] text-gray-700">
-                            <div className="flex gap-2">
-                              <dt className="text-gray-400 shrink-0 w-10">품목</dt>
-                              <dd className="font-medium text-gray-900 break-words">{m.proposal.itemName}</dd>
-                            </div>
-                            <div className="flex gap-2">
-                              <dt className="text-gray-400 shrink-0 w-10">수량</dt>
-                              <dd className="font-medium text-gray-900">{m.proposal.qty}</dd>
-                            </div>
-                            <div className="flex gap-2">
-                              <dt className="text-gray-400 shrink-0 w-10">위치</dt>
-                              <dd className="font-medium text-gray-900 break-words">{m.proposal.locationName}</dd>
-                            </div>
-                            {m.proposal.action === "inventory_outbound" && m.proposal.refTxNo && (
-                              <div className="flex gap-2">
-                                <dt className="text-gray-400 shrink-0 w-10">출고 대상</dt>
-                                <dd className="font-medium text-gray-900 break-words">
-                                  입고 전표 {m.proposal.refTxNo}
-                                </dd>
-                              </div>
-                            )}
-                          </dl>
+                      {/* 작업 확인 카드 (스키마 cardShow 기반 자동 생성) */}
+                      {m.proposal &&
+                        (() => {
+                          const op = schemas.find((s) => s.id === m.proposal!.opId);
+                          const card = buildCard(op, m.proposal!);
+                          return (
+                            <div className="mt-1 w-full rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5">
+                              <p className="text-[12px] font-bold text-blue-900 mb-1.5">{card.title}</p>
+                              <dl className="space-y-0.5 text-[12px] text-gray-700">
+                                {card.rows.map((r, ri) => (
+                                  <div key={ri} className="flex gap-2">
+                                    <dt className="text-gray-400 shrink-0 min-w-[3rem]">{r.label}</dt>
+                                    <dd className="font-medium text-gray-900 break-words">{r.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
 
-                          {m.proposalStatus === "pending" && (
-                            <div className="flex gap-2 mt-2.5">
-                              <button
-                                onClick={() => handleConfirmProposal(i, m.proposal!)}
-                                className="flex-1 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-bold transition-colors"
-                              >
-                                확인
-                              </button>
-                              <button
-                                onClick={() => handleCancelProposal(i)}
-                                className="flex-1 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-600 text-[12px] font-medium border border-gray-200 transition-colors"
-                              >
-                                취소
-                              </button>
+                              {m.proposalStatus === "pending" && (
+                                <div className="flex gap-2 mt-2.5">
+                                  <button
+                                    onClick={() => handleConfirmProposal(i, m.proposal!)}
+                                    className="flex-1 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-bold transition-colors"
+                                  >
+                                    확인
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelProposal(i)}
+                                    className="flex-1 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-600 text-[12px] font-medium border border-gray-200 transition-colors"
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              )}
+                              {m.proposalStatus === "submitting" && (
+                                <p className="mt-2.5 text-[12px] text-gray-500 font-medium">처리 중...</p>
+                              )}
+                              {m.proposalStatus === "done" && (
+                                <p className="mt-2.5 text-[12px] text-green-600 font-bold">✓ 완료</p>
+                              )}
+                              {m.proposalStatus === "cancelled" && (
+                                <p className="mt-2.5 text-[12px] text-gray-400 font-medium">취소됨</p>
+                              )}
+                              {m.proposalStatus === "failed" && (
+                                <p className="mt-2.5 text-[12px] text-red-500 font-bold">실패</p>
+                              )}
                             </div>
-                          )}
-                          {m.proposalStatus === "submitting" && (
-                            <p className="mt-2.5 text-[12px] text-gray-500 font-medium">처리 중...</p>
-                          )}
-                          {m.proposalStatus === "done" && (
-                            <p className="mt-2.5 text-[12px] text-green-600 font-bold">✓ 입고 완료</p>
-                          )}
-                          {m.proposalStatus === "cancelled" && (
-                            <p className="mt-2.5 text-[12px] text-gray-400 font-medium">취소됨</p>
-                          )}
-                          {m.proposalStatus === "failed" && (
-                            <p className="mt-2.5 text-[12px] text-red-500 font-bold">실패</p>
-                          )}
-                        </div>
-                      )}
+                          );
+                        })()}
 
                       <span className="text-[10px] text-gray-400 mt-0.5 px-1">
                         {formatTime(m.createdAt)}
