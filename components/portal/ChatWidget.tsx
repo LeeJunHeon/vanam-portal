@@ -364,6 +364,9 @@ export default function ChatWidget() {
         text: `${opLabel} 완료되었습니다.`,
         createdAt: Date.now(),
       });
+      // 작업 완료 → gemma에 보내는 대화 맥락만 초기화 (다음 작업이 깨끗한 상태에서 시작).
+      // displayMessages(화면 기록)는 그대로 유지되므로 사용자에게는 기록이 남는다.
+      setMessages([]);
     } catch {
       setDisplayMessages((prev) =>
         prev.map((m, i) => (i === index ? { ...m, proposalStatus: "failed" } : m))
