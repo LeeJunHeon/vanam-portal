@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Mic, Camera, Trash2, ScanLine } from "lucide-react";
+import { MessageCircle, X, Send, Mic, Trash2, Camera, Images } from "lucide-react";
 import { useSession } from "next-auth/react";
 import BarcodeCameraScanner from "./BarcodeCameraScanner";
 
@@ -38,6 +38,7 @@ interface DisplayMessage {
   createdAt: number; // 메시지 생성 시각(epoch ms)
   proposal?: OperationData;
   proposalStatus?: "pending" | "confirmed" | "cancelled" | "submitting" | "done" | "failed";
+  scanRequest?: boolean; // gemma가 <<SCAN>> 보냄 → 채팅에 카메라/갤러리 버튼 표시
 }
 
 // ─────────────────────────────────────────────
@@ -176,6 +177,13 @@ function parseOperationData(content: string): { data: OperationData; cleanedText
   } catch {
     return null;
   }
+}
+
+// <<SCAN>> 마커 감지: gemma가 바코드 스캔 버튼을 요청. 마커는 텍스트에서 제거.
+function parseScanRequest(content: string): { isScan: boolean; cleanedText: string } {
+  if (!content.includes("<<SCAN>>")) return { isScan: false, cleanedText: content };
+  const cleanedText = content.replace(/<<SCAN>>/g, "").trim();
+  return { isScan: true, cleanedText };
 }
 
 // 확인 카드 내용 생성: 스키마 cardShow 기반. op 없거나 cardShow 없으면 values 나열(폴백).
@@ -483,7 +491,7 @@ export default function ChatWidget() {
       // 전송용 히스토리에는 항상 원본 content를 그대로 저장 (마커 포함)
       setMessages((prev) => [...prev, assistantMsg]);
 
-      // 화면 표시용: 작업 데이터 마커 감지 → 카드로 표시, 실패 시 일반 텍스트 폴백
+      // 화면 표시용: 작업 데이터(DATA) → 카드 / 스캔요청(SCAN) → 카메라·갤러리 버튼 / 그 외 → 텍스트
       const proposal = parseOperationData(content);
       if (proposal) {
         appendDisplay({
@@ -494,7 +502,17 @@ export default function ChatWidget() {
           createdAt: Date.now(),
         });
       } else {
-        appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
+        const scan = parseScanRequest(content);
+        if (scan.isScan) {
+          appendDisplay({
+            role: "assistant",
+            text: scan.cleanedText || "바코드를 스캔하거나, 바코드 번호 또는 품목명을 입력해 주세요.",
+            scanRequest: true,
+            createdAt: Date.now(),
+          });
+        } else {
+          appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
+        }
       }
     } catch {
       appendDisplay({
@@ -579,13 +597,20 @@ export default function ChatWidget() {
     }
   }
 
+  // 갤러리에서 사진 선택: 바코드가 있으면 디코드해서 코드 자동전송, 없으면 이미지로 전송(vision).
   async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // 같은 파일 재선택 가능
     if (!file) return;
     try {
+      const code = await decodeBarcodeFromFile(file);
+      if (code) {
+        sendMessage(code.toUpperCase(), null);
+        return;
+      }
+      // 바코드 없음 → 이미지로 전송 (gemma vision)
       const dataUrl = await resizeImageToDataUrl(file);
-      setPendingImage(dataUrl);
+      sendMessage("", dataUrl);
     } catch {
       appendDisplay({
         role: "assistant",
@@ -748,6 +773,24 @@ export default function ChatWidget() {
                           );
                         })()}
 
+                      {/* 바코드 스캔 요청: 카메라 / 갤러리 버튼 (문자 입력도 항상 가능) */}
+                      {m.scanRequest && (
+                        <div className="mt-1.5 flex gap-2">
+                          <button
+                            onClick={() => setShowScanner(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-semibold transition-colors"
+                          >
+                            <Camera size={14} /> 카메라
+                          </button>
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-700 text-[12px] font-semibold border border-gray-200 transition-colors"
+                          >
+                            <Images size={14} /> 갤러리
+                          </button>
+                        </div>
+                      )}
+
                       <span className="text-[10px] text-gray-400 mt-0.5 px-1">
                         {formatTime(m.createdAt)}
                       </span>
@@ -789,49 +832,29 @@ export default function ChatWidget() {
             </div>
           )}
 
-          {/* 바코드 카메라 스캐너 */}
+          {/* 바코드 카메라 스캐너 (채팅 내 '카메라' 버튼으로 열림) */}
           {showScanner && (
             <BarcodeCameraScanner
               onDetected={(code) => {
                 setShowScanner(false);
                 const cleaned = code.trim().toUpperCase();
-                setInput((prev) => {
-                  const next = prev.trim() ? `${prev.trim()} ${cleaned}` : cleaned;
-                  baseInputRef.current = next;
-                  return next;
-                });
+                if (cleaned) sendMessage(cleaned, null);
               }}
               onClose={() => setShowScanner(false)}
             />
           )}
 
+          {/* 갤러리 선택용 숨김 input (채팅 내 '갤러리' 버튼으로 열림) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic"
+            onChange={onFilePicked}
+            className="hidden"
+          />
+
           {/* 입력 영역 */}
           <div className="border-t border-gray-100 bg-white p-2 flex items-end gap-1.5">
-            {/* 사진 첨부 */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              capture="environment"
-              onChange={onFilePicked}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="사진 첨부"
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0"
-            >
-              <Camera size={18} />
-            </button>
-
-            {/* 바코드 스캔 */}
-            <button
-              onClick={() => setShowScanner(true)}
-              aria-label="바코드 스캔"
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0"
-            >
-              <ScanLine size={18} />
-            </button>
 
             {/* 마이크 */}
             {speechSupported ? (
