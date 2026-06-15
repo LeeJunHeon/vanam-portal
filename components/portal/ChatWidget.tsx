@@ -329,6 +329,25 @@ export default function ChatWidget() {
     setDisplayMessages((prev) => [...prev, msg]);
   }
 
+  // gemma에 보내는 대화 맥락(messages)만 초기화한다. displayMessages(화면 기록)는 유지.
+  // 작업이 성공이든 실패든, 끝난 뒤 다음 작업이 깨끗한 맥락에서 시작하도록 호출한다.
+  // (실패 맥락이 남으면 gemma가 다음 시도에서 같은 실수를 반복하므로 실패 시에도 호출한다.)
+  const resetConversationContext = () => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+        if (raw) {
+          const stored = JSON.parse(raw) as { messages?: unknown; displayMessages?: unknown };
+          stored.messages = [];
+          window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stored));
+        }
+      } catch {
+        /* 무시 */
+      }
+    }
+  };
+
   const handleConfirmProposal = async (index: number, data: OperationData) => {
     // submitting 표시
     setDisplayMessages((prev) =>
@@ -353,6 +372,8 @@ export default function ChatWidget() {
           isError: true,
           createdAt: Date.now(),
         });
+        // 실패해도 맥락 초기화 → 다음 시도에서 gemma가 같은 실수를 반복하지 않도록.
+        resetConversationContext();
         return;
       }
       await res.json().catch(() => ({}));
@@ -364,24 +385,8 @@ export default function ChatWidget() {
         text: `${opLabel} 완료되었습니다.`,
         createdAt: Date.now(),
       });
-      // 작업 완료 → gemma에 보내는 대화 맥락만 초기화 (다음 작업이 깨끗한 상태에서 시작).
-      // displayMessages(화면 기록)는 그대로 유지되므로 사용자에게는 기록이 남는다.
-      setMessages([]);
-      // localStorage에 저장된 messages도 즉시 빈 배열로 갱신한다.
-      // (이렇게 하지 않으면 새로고침 시 복원 useEffect가 옛 맥락을 되살려 gemma가 직전 작업을 그대로 베낀다.)
-      // displayMessages는 유지하므로 화면 기록은 보존된다.
-      if (typeof window !== "undefined") {
-        try {
-          const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
-          if (raw) {
-            const stored = JSON.parse(raw) as { messages?: unknown; displayMessages?: unknown };
-            stored.messages = [];
-            window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stored));
-          }
-        } catch {
-          /* 무시 */
-        }
-      }
+      // 작업 완료 → 다음 작업이 깨끗한 맥락에서 시작하도록 초기화.
+      resetConversationContext();
     } catch {
       setDisplayMessages((prev) =>
         prev.map((m, i) => (i === index ? { ...m, proposalStatus: "failed" } : m))
@@ -392,6 +397,8 @@ export default function ChatWidget() {
         isError: true,
         createdAt: Date.now(),
       });
+      // 실패해도 맥락 초기화 → 다음 시도에서 gemma가 같은 실수를 반복하지 않도록.
+      resetConversationContext();
     }
   };
 
