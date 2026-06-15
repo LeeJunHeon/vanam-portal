@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Mic, Camera, Trash2 } from "lucide-react";
+import { MessageCircle, X, Send, Mic, Camera, Trash2, ScanLine } from "lucide-react";
 import { useSession } from "next-auth/react";
+import BarcodeCameraScanner from "./BarcodeCameraScanner";
 
 type TextPart = { type: "text"; text: string };
 type ImagePart = { type: "image_url"; image_url: { url: string } };
@@ -215,6 +216,7 @@ export default function ChatWidget() {
   const [isSending, setIsSending] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [schemas, setSchemas] = useState<SchemaOp[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -760,6 +762,22 @@ export default function ChatWidget() {
             </div>
           )}
 
+          {/* 바코드 카메라 스캐너 */}
+          {showScanner && (
+            <BarcodeCameraScanner
+              onDetected={(code) => {
+                setShowScanner(false);
+                const cleaned = code.trim().toUpperCase();
+                setInput((prev) => {
+                  const next = prev.trim() ? `${prev.trim()} ${cleaned}` : cleaned;
+                  baseInputRef.current = next;
+                  return next;
+                });
+              }}
+              onClose={() => setShowScanner(false)}
+            />
+          )}
+
           {/* 입력 영역 */}
           <div className="border-t border-gray-100 bg-white p-2 flex items-end gap-1.5">
             {/* 사진 첨부 */}
@@ -777,6 +795,15 @@ export default function ChatWidget() {
               className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0"
             >
               <Camera size={18} />
+            </button>
+
+            {/* 바코드 스캔 */}
+            <button
+              onClick={() => setShowScanner(true)}
+              aria-label="바코드 스캔"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0"
+            >
+              <ScanLine size={18} />
             </button>
 
             {/* 마이크 */}
