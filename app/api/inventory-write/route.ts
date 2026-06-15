@@ -129,10 +129,24 @@ export async function POST(req: Request) {
     const nameKey = field.name.endsWith("Id")
       ? `${field.name.slice(0, -2)}Name`
       : null;
-    if (!nameKey) continue;
-    const nameVal = values[nameKey];
-    const name = typeof nameVal === "string" ? nameVal.trim() : "";
-    if (!name) continue; // 이름 없음 → values의 id 그대로 사용
+
+    // 이름 후보: (1) "...Name" 키 값, 없으면 (2) id 필드 자체에 든 비-숫자 문자열
+    //   gemma가 locationName 대신 locationId에 "Chamber 1 - Gun 1"처럼 이름을 넣는 경우를 흡수.
+    let name = "";
+    if (nameKey) {
+      const nameVal = values[nameKey];
+      if (typeof nameVal === "string" && nameVal.trim()) {
+        name = nameVal.trim();
+      }
+    }
+    if (!name) {
+      const selfVal = values[field.name];
+      // id 필드 값이 숫자(또는 숫자 문자열)가 아니면 = 이름이 들어온 것으로 간주
+      if (typeof selfVal === "string" && selfVal.trim() && Number.isNaN(Number(selfVal))) {
+        name = selfVal.trim();
+      }
+    }
+    if (!name) continue; // 이름 없음(또는 이미 숫자 id) → values의 id 그대로 사용
 
     const ep = lookupEndpoint(field.lookup);
     if (!ep) continue; // 매핑 없는 lookup → 이름교정 건너뜀(values의 id 그대로)
