@@ -135,6 +135,26 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
 }
 
 // ─────────────────────────────────────────────
+// 이미지 파일에서 바코드 디코드 시도 (zxing).
+// 성공 → 바코드 문자열, 실패/바코드 없음 → null.
+// ─────────────────────────────────────────────
+async function decodeBarcodeFromFile(file: File): Promise<string | null> {
+  try {
+    const { BrowserMultiFormatReader } = await import("@zxing/browser");
+    const reader = new BrowserMultiFormatReader();
+    const url = URL.createObjectURL(file);
+    try {
+      const result = await reader.decodeFromImageUrl(url);
+      return result?.getText()?.trim() || null;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return null; // NotFoundException 등 → 바코드 없음
+  }
+}
+
+// ─────────────────────────────────────────────
 // 작업 데이터 마커 파싱
 // <<DATA>> { "opId":"...", "필드":"값", ... } <<END>> 형태를 추출.
 // 실패하면 null 반환(호출부에서 일반 텍스트로 폴백).
@@ -410,18 +430,20 @@ export default function ChatWidget() {
     );
   };
 
-  async function send() {
-    const text = input.trim();
-    if ((!text && !pendingImage) || isSending) return;
+  // 실제 전송 로직: 주어진 text와 image(dataURL)로 /api/chat에 보낸다.
+  // send()(입력창)와 자동 전송(바코드 스캔 등) 양쪽에서 호출한다.
+  async function sendMessage(rawText: string, image: string | null) {
+    const text = rawText.trim();
+    if ((!text && !image) || isSending) return;
 
     // user 메시지 구성: 이미지 있으면 content는 배열, 없으면 문자열
     let userMessage: ChatMessage;
-    if (pendingImage) {
+    if (image) {
       userMessage = {
         role: "user",
         content: [
           { type: "text", text },
-          { type: "image_url", image_url: { url: pendingImage } },
+          { type: "image_url", image_url: { url: image } },
         ],
       };
     } else {
@@ -433,13 +455,10 @@ export default function ChatWidget() {
     appendDisplay({
       role: "user",
       text,
-      imageUrl: pendingImage ?? undefined,
+      imageUrl: image ?? undefined,
       createdAt: Date.now(),
     });
 
-    const sentImage = pendingImage;
-    setInput("");
-    setPendingImage(null);
     setIsSending(true);
 
     try {
@@ -485,10 +504,18 @@ export default function ChatWidget() {
         createdAt: Date.now(),
       });
     } finally {
-      // sentImage는 user 메시지에만 들어가고, 이후 턴엔 영향 없음
-      void sentImage;
       setIsSending(false);
     }
+  }
+
+  // 입력창 전송: 현재 input/pendingImage를 읽어 비운 뒤 sendMessage 호출.
+  function send() {
+    const text = input.trim();
+    if ((!text && !pendingImage) || isSending) return;
+    const img = pendingImage;
+    setInput("");
+    setPendingImage(null);
+    sendMessage(text, img);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
