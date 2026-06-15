@@ -153,8 +153,13 @@ export async function POST(req: Request) {
       const data = await upstream.json();
       content = (data?.choices?.[0]?.message?.content ?? "").trim();
 
-      // 내용이 있으면 즉시 반환. 비어 있으면 다음 시도.
-      if (content !== "") {
+      // "빈 응답" 판정: 실제 빈 문자열이거나, 게이트웨이가 gemma 빈 응답 시 채우는 경고 문구.
+      // 경고 문구는 항상 "couldn't generate a response"를 포함하므로 이를 기준으로 본다.
+      const isEmptyResponse =
+        content === "" || content.includes("couldn't generate a response");
+
+      // 정상 내용이면 즉시 반환. 빈 응답이면 다음 시도.
+      if (!isEmptyResponse) {
         return NextResponse.json({ content });
       }
       // 빈 응답이면 짧게 쉬고 재시도 (마지막 시도면 루프 종료)
