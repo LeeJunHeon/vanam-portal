@@ -129,24 +129,40 @@ export async function POST(req: Request) {
     }
   }
 
+  // 게이트웨이가 200 OK를 주면서도 content가 비어 오는 경우(gemma 간헐적 빈 응답)
+  // 같은 요청을 최대 3회까지 재시도한다. 마지막까지 비면 빈 content를 그대로 반환.
+  const MAX_ATTEMPTS = 3;
   try {
-    const upstream = await fetch(`${gatewayUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: "openclaw/default", messages: outgoingMessages, stream: false }),
-      signal: AbortSignal.timeout(120000),
-    });
+    let content = "";
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const upstream = await fetch(`${gatewayUrl}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model: "openclaw/default", messages: outgoingMessages, stream: false }),
+        signal: AbortSignal.timeout(120000),
+      });
 
-    if (!upstream.ok) {
-      const detail = (await upstream.text()).slice(0, 500);
-      return NextResponse.json({ error: "gateway_error", detail }, { status: 502 });
+      if (!upstream.ok) {
+        const detail = (await upstream.text()).slice(0, 500);
+        return NextResponse.json({ error: "gateway_error", detail }, { status: 502 });
+      }
+
+      const data = await upstream.json();
+      content = (data?.choices?.[0]?.message?.content ?? "").trim();
+
+      // 내용이 있으면 즉시 반환. 비어 있으면 다음 시도.
+      if (content !== "") {
+        return NextResponse.json({ content });
+      }
+      // 빈 응답이면 짧게 쉬고 재시도 (마지막 시도면 루프 종료)
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
     }
-
-    const data = await upstream.json();
-    const content = data?.choices?.[0]?.message?.content ?? "";
+    // 3회 모두 빈 응답 — 빈 content 반환(클라이언트가 안내 메시지 표시)
     return NextResponse.json({ content });
   } catch (e: unknown) {
     const name =
