@@ -48,7 +48,17 @@ export default function AppCardGrid() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d || !d.hasEmployee) return; // 미로그인/미매핑이면 표시 안 함
-        setHrStat1(d.connection === "working" ? "🟢 연결중" : "🔴 끊어짐");
+        // 근태 시스템 progressStatus를 그대로 표시 (statusLabel) + 상태별 색 이모지
+        const ps = d.progressStatus;
+        const label = d.statusLabel || "";
+        const dot =
+          ps === "working" ? "🟢" :
+          ps === "away" ? "🟡" :
+          ps === "completed" ? "🔵" :
+          ps === "absent_today" ? "⚪" :
+          (ps === "category_working" || ps === "category_completed") ? "🟣" :
+          "⚪";
+        setHrStat1(label ? `${dot} ${label}` : undefined);
         const w = d.week ?? {};
         setHrStat2(
           `이번주 정상 ${w.normal ?? 0}·지각 ${w.late ?? 0}·조퇴 ${w.earlyLeave ?? 0}·결근 ${w.absent ?? 0}`
