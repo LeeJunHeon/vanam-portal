@@ -16,7 +16,9 @@ export default function AppCardGrid() {
   const [eqStat2, setEqStat2] = useState<string | undefined>(undefined);
   const [invStatus, setInvStatus] = useState<"online" | "offline" | "pending">("online");
   const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
-  const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("offline");
+  const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("online");
+  const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
+  const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     // 재고관리 요약
@@ -38,6 +40,19 @@ export default function AppCardGrid() {
         const unresolved = d.totalUnresolved ?? 0;
         setEqStat1(`장비 ${total}대`);
         setEqStat2(`미해결 수리 ${unresolved}건`);
+      })
+      .catch(() => {});
+
+    // 근태 요약 (본인 연결상태 + 이번주 집계)
+    fetch(`${HR_BASE}/api/portal-summary`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d || !d.hasEmployee) return; // 미로그인/미매핑이면 표시 안 함
+        setHrStat1(d.connection === "working" ? "🟢 연결중" : "🔴 끊어짐");
+        const w = d.week ?? {};
+        setHrStat2(
+          `이번주 정상 ${w.normal ?? 0}·지각 ${w.late ?? 0}·조퇴 ${w.earlyLeave ?? 0}·결근 ${w.absent ?? 0}`
+        );
       })
       .catch(() => {});
 
@@ -92,6 +107,8 @@ export default function AppCardGrid() {
       description: "WiFi 자동 출퇴근·휴가·근태 결재",
       status: hrStatus,
       href: HR_BASE,
+      stat1: hrStat1,
+      stat2: hrStat2,
     },
     {
       icon: Workflow,
