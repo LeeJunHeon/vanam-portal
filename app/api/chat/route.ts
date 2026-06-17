@@ -80,24 +80,31 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
   return lines.join("\n");
 }
 
-// 재고앱에서 작업 스키마 조회 (best-effort: 실패하면 null → 스키마 없이 진행)
-// 조회 토큰은 inventory-write와 동일하게 MCP_API_TOKEN 사용.
-async function fetchSchemas(): Promise<SchemaOp[] | null> {
-  const apiUrl = process.env.INVENTORY_API_URL;
-  const mcpToken = process.env.MCP_API_TOKEN;
-  if (!apiUrl || !mcpToken) return null;
+// 한 앱의 작업 스키마 조회 (실패하면 빈 배열 — best-effort)
+async function fetchSchemasFrom(apiUrl?: string, token?: string): Promise<SchemaOp[]> {
+  if (!apiUrl || !token) return [];
   try {
     const res = await fetch(`${apiUrl}/api/internal/schemas`, {
       method: "GET",
-      headers: { Authorization: `Bearer ${mcpToken}` },
+      headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(10000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const data = await res.json();
-    return Array.isArray(data) ? (data as SchemaOp[]) : null;
+    return Array.isArray(data) ? (data as SchemaOp[]) : [];
   } catch {
-    return null;
+    return [];
   }
+}
+
+// 재고 + 장비 스키마 병합 (둘 다 비면 null → 스키마 없이 진행)
+async function fetchSchemas(): Promise<SchemaOp[] | null> {
+  const [inventory, equipment] = await Promise.all([
+    fetchSchemasFrom(process.env.INVENTORY_API_URL, process.env.MCP_API_TOKEN),
+    fetchSchemasFrom(process.env.EQUIPMENT_API_URL, process.env.EQUIP_MCP_TOKEN),
+  ]);
+  const merged = [...inventory, ...equipment];
+  return merged.length > 0 ? merged : null;
 }
 
 export async function POST(req: Request) {

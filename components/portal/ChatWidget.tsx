@@ -19,6 +19,7 @@ interface SchemaField { name: string; label: string; type: string; required?: bo
 interface SchemaOp {
   id: string;
   label: string;
+  app?: string;            // "equipment"면 장비 프록시로 라우팅 (없으면 inventory)
   cardTitle?: string;
   cardShow?: string[];     // 카드에 보일 필드명 순서
   fields?: SchemaField[];
@@ -385,8 +386,9 @@ export default function ChatWidget() {
     );
     const op = schemas.find((s) => s.id === data.opId);
     const opLabel = op?.label ?? "작업";
+    const writeEndpoint = op?.app === "equipment" ? "/api/equipment-write" : "/api/inventory-write";
     try {
-      const res = await fetch("/api/inventory-write", {
+      const res = await fetch(writeEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ opId: data.opId, values: data.values }),
