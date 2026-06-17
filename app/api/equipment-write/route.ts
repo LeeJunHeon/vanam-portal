@@ -28,6 +28,17 @@ interface SchemaOp {
 function todayKst(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 }
+function nowKstWallClock(): string {
+  // 현재 시각을 KST 벽시계 "YYYY-MM-DDTHH:mm"로 (서버 TZ 무관).
+  // 엔드포인트의 new Date()가 이 값을 그대로 저장 → 웹과 동일하게 KST로 표시됨.
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date());
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return `${g("year")}-${g("month")}-${g("day")}T${g("hour")}:${g("minute")}`;
+}
 function errName(e: unknown): string {
   return typeof e === "object" && e && "name" in e ? (e as { name: string }).name : "";
 }
@@ -186,6 +197,15 @@ export async function POST(req: Request) {
     if (field.auto === "today") {
       resolved[field.name] = todayKst();
     }
+  }
+
+  // occurredAt: 선택기로 받은 값이 있으면 그대로(공백→T, 형식 검증), 없으면 현재 KST 날짜+시각.
+  // (occurredAt은 더 이상 auto가 아니므로 위 루프에서 채워지지 않는다)
+  {
+    const given =
+      typeof resolved.occurredAt === "string" ? resolved.occurredAt.trim().replace(" ", "T") : "";
+    const valid = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(given);
+    resolved.occurredAt = valid ? given : nowKstWallClock();
   }
 
   // 4. steps 실행 (장비는 단일 step)

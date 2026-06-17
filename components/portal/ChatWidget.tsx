@@ -40,6 +40,7 @@ interface DisplayMessage {
   proposal?: OperationData;
   proposalStatus?: "pending" | "confirmed" | "cancelled" | "submitting" | "done" | "failed";
   scanRequest?: boolean; // gemma가 <<SCAN>> 보냄 → 채팅에 카메라/갤러리 버튼 표시
+  datetimeRequest?: boolean; // gemma가 <<DATETIME>> 보냄 → 채팅에 날짜·시간 선택기 표시
 }
 
 // ─────────────────────────────────────────────
@@ -187,6 +188,13 @@ function parseScanRequest(content: string): { isScan: boolean; cleanedText: stri
   return { isScan: true, cleanedText };
 }
 
+// <<DATETIME>> 마커 감지: gemma가 날짜·시간 선택기를 요청. 마커는 텍스트에서 제거.
+function parseDatetimeRequest(content: string): { isDatetime: boolean; cleanedText: string } {
+  if (!content.includes("<<DATETIME>>")) return { isDatetime: false, cleanedText: content };
+  const cleanedText = content.replace(/<<DATETIME>>/g, "").trim();
+  return { isDatetime: true, cleanedText };
+}
+
 // 확인 카드 내용 생성: 스키마 cardShow 기반. op 없거나 cardShow 없으면 values 나열(폴백).
 // id_ref 필드는 이름값(...Name)을 우선 표시. 값 없는 필드는 건너뜀.
 function buildCard(
@@ -246,6 +254,7 @@ export default function ChatWidget() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [datetimeValue, setDatetimeValue] = useState("");
   const [schemas, setSchemas] = useState<SchemaOp[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -505,11 +514,19 @@ export default function ChatWidget() {
         });
       } else {
         const scan = parseScanRequest(content);
+        const datetime = parseDatetimeRequest(content);
         if (scan.isScan) {
           appendDisplay({
             role: "assistant",
             text: scan.cleanedText || "바코드를 스캔하거나, 바코드 번호 또는 품목명을 입력해 주세요.",
             scanRequest: true,
+            createdAt: Date.now(),
+          });
+        } else if (datetime.isDatetime) {
+          appendDisplay({
+            role: "assistant",
+            text: datetime.cleanedText || "발생 일시를 선택해 주세요.",
+            datetimeRequest: true,
             createdAt: Date.now(),
           });
         } else {
@@ -789,6 +806,29 @@ export default function ChatWidget() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-700 text-[12px] font-semibold border border-gray-200 transition-colors"
                           >
                             <Images size={14} /> 갤러리
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 발생 일시 선택기: 날짜·시간 입력 (datetime-local) */}
+                      {m.datetimeRequest && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <input
+                            type="datetime-local"
+                            value={datetimeValue}
+                            onChange={(e) => setDatetimeValue(e.target.value)}
+                            className="px-2 py-1.5 rounded-lg border border-gray-200 text-[12px] text-gray-700"
+                          />
+                          <button
+                            onClick={() => {
+                              if (!datetimeValue) return;
+                              const v = datetimeValue.replace("T", " ");
+                              sendMessage(`발생 일시: ${v}`, null);
+                              setDatetimeValue("");
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-semibold transition-colors"
+                          >
+                            확인
                           </button>
                         </div>
                       )}
