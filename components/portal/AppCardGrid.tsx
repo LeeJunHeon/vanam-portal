@@ -61,7 +61,7 @@ export default function AppCardGrid() {
         setHrStat1(label ? `${dot} ${label}` : undefined);
         const w = d.week ?? {};
         setHrStat2(
-          `이번주 정상 ${w.normal ?? 0}·지각 ${w.late ?? 0}·조퇴 ${w.earlyLeave ?? 0}·결근 ${w.absent ?? 0}`
+          `이번주 정상 ${w.normal ?? 0} · 지각 ${w.late ?? 0} · 조퇴 ${w.earlyLeave ?? 0} · 결근 ${w.absent ?? 0}`
         );
       })
       .catch(() => {});
