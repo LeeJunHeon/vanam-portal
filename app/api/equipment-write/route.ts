@@ -202,10 +202,21 @@ export async function POST(req: Request) {
       if (exact.length === 1) {
         resolved[field.name] = exact[0].id;
       } else {
-        return NextResponse.json(
-          { error: `${field.label}을(를) 특정할 수 없습니다.` },
-          { status: 400 }
+        // 폴백: gemma가 "evaporator_id"처럼 변형/대소문자 차이를 보내도 정규화해서 매칭
+        const norm = (s: string) =>
+          s.trim().toLowerCase().replace(/[_\s-]+id$/, "").replace(/[_\s-]+/g, "");
+        const target = norm(name);
+        const loose = list.filter(
+          (it) => typeof it?.name === "string" && norm(it.name) === target
         );
+        if (loose.length === 1) {
+          resolved[field.name] = loose[0].id;
+        } else {
+          return NextResponse.json(
+            { error: `${field.label}을(를) 특정할 수 없습니다.` },
+            { status: 400 }
+          );
+        }
       }
     }
   }
