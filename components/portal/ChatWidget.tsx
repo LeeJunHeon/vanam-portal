@@ -258,6 +258,10 @@ export default function ChatWidget() {
   const [schemas, setSchemas] = useState<SchemaOp[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [cardPhotos, setCardPhotos] = useState<Record<number, string[]>>({});
+  const photoCardIndexRef = useRef<number>(-1);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseInputRef = useRef<string>(""); // 인식 시작 시점의 입력값
@@ -400,7 +404,7 @@ export default function ChatWidget() {
       const res = await fetch(writeEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opId: data.opId, values: data.values }),
+        body: JSON.stringify({ opId: data.opId, values: data.values, photos: cardPhotos[index] ?? [] }),
       });
       if (!res.ok) {
         const detail = await res.text();
@@ -640,6 +644,31 @@ export default function ChatWidget() {
     }
   }
 
+  // 카드 사진 첨부: 촬영/갤러리에서 고른 이미지를 해당 카드(index)에 누적 (바코드 디코드 안 함, 순수 사진)
+  async function onCardPhotosPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const idx = photoCardIndexRef.current;
+    if (idx < 0 || files.length === 0) return;
+    const urls: string[] = [];
+    for (const f of files) {
+      try {
+        urls.push(await resizeImageToDataUrl(f));
+      } catch {
+        /* 개별 실패 스킵 */
+      }
+    }
+    if (urls.length === 0) return;
+    setCardPhotos((prev) => ({ ...prev, [idx]: [...(prev[idx] ?? []), ...urls] }));
+  }
+
+  function removeCardPhoto(cardIdx: number, photoIdx: number) {
+    setCardPhotos((prev) => ({
+      ...prev,
+      [cardIdx]: (prev[cardIdx] ?? []).filter((_, i) => i !== photoIdx),
+    }));
+  }
+
   return (
     <>
       {/* 플로팅 버튼 */}
@@ -760,6 +789,39 @@ export default function ChatWidget() {
                                 ))}
                               </dl>
 
+                              {m.proposalStatus === "pending" && op?.app === "equipment" && (
+                                <div className="mt-2">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => { photoCardIndexRef.current = i; cameraInputRef.current?.click(); }}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 text-gray-700 text-[11px] font-semibold border border-gray-200 transition-colors"
+                                    >
+                                      <Camera size={13} /> 사진 촬영
+                                    </button>
+                                    <button
+                                      onClick={() => { photoCardIndexRef.current = i; galleryPhotoInputRef.current?.click(); }}
+                                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 text-gray-700 text-[11px] font-semibold border border-gray-200 transition-colors"
+                                    >
+                                      <Images size={13} /> 갤러리
+                                    </button>
+                                  </div>
+                                  {(cardPhotos[i]?.length ?? 0) > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                      {cardPhotos[i].map((url, pi) => (
+                                        <div key={pi} className="relative">
+                                          <img src={url} alt="" className="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                                          <button
+                                            onClick={() => removeCardPhoto(i, pi)}
+                                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gray-700 text-white text-[10px] leading-none flex items-center justify-center"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                               {m.proposalStatus === "pending" && (
                                 <div className="flex gap-2 mt-2.5">
                                   <button
@@ -892,6 +954,24 @@ export default function ChatWidget() {
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic"
             onChange={onFilePicked}
+            className="hidden"
+          />
+
+          {/* 카드 사진: 촬영(카메라)·갤러리(다중) 숨김 input */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onCardPhotosPicked}
+            className="hidden"
+          />
+          <input
+            ref={galleryPhotoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={onCardPhotosPicked}
             className="hidden"
           />
 

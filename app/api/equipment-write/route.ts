@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "EQUIP_MCP_TOKEN 미설정" }, { status: 500 });
   }
 
-  let body: { opId?: unknown; values?: unknown };
+  let body: { opId?: unknown; values?: unknown; photos?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -107,6 +107,9 @@ export async function POST(req: Request) {
     body.values && typeof body.values === "object" && !Array.isArray(body.values)
       ? (body.values as Record<string, unknown>)
       : {};
+  const photos = Array.isArray(body.photos)
+    ? (body.photos as unknown[]).filter((p): p is string => typeof p === "string")
+    : [];
 
   // 1. 스키마 가져와서 opId 작업 찾기
   let schemas: SchemaOp[];
@@ -307,6 +310,27 @@ export async function POST(req: Request) {
     } catch (e: unknown) {
       const reason = errName(e) === "TimeoutError" ? "timeout" : "equipment_unreachable";
       return NextResponse.json({ error: reason }, { status: 504 });
+    }
+  }
+
+  // 사진: 로그 생성 후 그 logId로 첨부 사진들 업로드 (실패해도 로그는 유지)
+  const finalObj =
+    lastOut && typeof lastOut === "object" ? (lastOut as Record<string, unknown>) : {};
+  const newLogId = Number(finalObj.id);
+  if (newLogId && photos.length > 0) {
+    try {
+      await fetch(`${apiUrl}/api/internal/upload-photo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${writeToken}`,
+          "x-acting-user-email": email,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ logId: newLogId, photos }),
+        signal: AbortSignal.timeout(60000),
+      });
+    } catch {
+      // 사진 업로드 실패 무시 (로그 자체는 생성됨)
     }
   }
 
