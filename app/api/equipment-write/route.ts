@@ -39,6 +39,25 @@ function nowKstWallClock(): string {
   const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
   return `${g("year")}-${g("month")}-${g("day")}T${g("hour")}:${g("minute")}`;
 }
+// 교체부품 자연어("O-ring 2개, 밸브 1개")를 [{name,qty}] JSON 문자열로 구조화.
+// 파싱 못 하면 원본 문자열을 그대로 반환(장비 상세화면이 폴백으로 원문 표시).
+function parseReplacedParts(raw: string): string {
+  const s = raw.trim();
+  if (!s) return "";
+  const pieces = s.split(/[,\n]+/).map((p) => p.trim()).filter(Boolean);
+  const parts: { name: string; qty: number }[] = [];
+  for (const piece of pieces) {
+    // 끝의 "[x/×/*] 숫자[개]"를 수량으로, 나머지를 이름으로
+    const m = piece.match(/^(.*?)[\s×xX*]*(\d+)\s*개?$/);
+    if (m && m[1].trim()) {
+      parts.push({ name: m[1].trim(), qty: Math.max(1, parseInt(m[2], 10)) });
+    } else {
+      const name = piece.replace(/개$/, "").trim();
+      if (name) parts.push({ name, qty: 1 });
+    }
+  }
+  return parts.length > 0 ? JSON.stringify(parts) : s;
+}
 function errName(e: unknown): string {
   return typeof e === "object" && e && "name" in e ? (e as { name: string }).name : "";
 }
@@ -206,6 +225,16 @@ export async function POST(req: Request) {
       typeof resolved.occurredAt === "string" ? resolved.occurredAt.trim().replace(" ", "T") : "";
     const valid = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(given);
     resolved.occurredAt = valid ? given : nowKstWallClock();
+  }
+
+  // replacedParts: gemma가 준 자연어를 [{name,qty}] JSON으로 구조화 (배열로 오면 그대로 직렬화).
+  {
+    const rp = resolved.replacedParts;
+    if (Array.isArray(rp)) {
+      resolved.replacedParts = JSON.stringify(rp);
+    } else if (typeof rp === "string" && rp.trim()) {
+      resolved.replacedParts = parseReplacedParts(rp);
+    }
   }
 
   // 4. steps 실행 (장비는 단일 step)
