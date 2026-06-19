@@ -269,6 +269,20 @@ function formatQueryResult(queryId: string, data: unknown): string {
       `· ${a.requesterName ?? "?"}(${a.departmentName ?? "-"}) ${a.categoryName ?? ""} ${a.startDate}~${a.endDate}`
     ).join("\n");
   }
+  if (queryId === "team_attendance") {
+    if (d.allowed === false) return "이 조회는 관리자(부서장/인사담당/대표)만 가능합니다.";
+    const scopeLabel = d.scope === "all" ? "전체" : "우리 부서";
+    const absent = (Array.isArray(d.absentList) ? d.absentList : []) as Array<Record<string, unknown>>;
+    const leaveL = (Array.isArray(d.leaveList) ? d.leaveList : []) as Array<Record<string, unknown>>;
+    let out = `${d.date} ${scopeLabel} 출근 현황 (총 ${d.total}명):\n· 출근 ${d.present} · 휴가/외근 ${d.leave} · 결근 ${d.absent}`;
+    if (absent.length > 0) {
+      out += `\n[결근] ` + absent.map((a) => `${a.name ?? "?"}(${a.departmentName ?? "-"})`).join(", ");
+    }
+    if (leaveL.length > 0) {
+      out += `\n[휴가/외근] ` + leaveL.map((a) => `${a.name ?? "?"}(${a.categoryName ?? ""})`).join(", ");
+    }
+    return out;
+  }
   if (queryId === "external_work") {
     const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
     if (rows.length === 0) return "외근 신청 내역이 없습니다.";
