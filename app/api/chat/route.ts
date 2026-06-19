@@ -105,7 +105,7 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
   lines.push('- my_approvals : 본인이 결재할 대기 건. 부르는 말: "내가 결재할 거 있어", "내 결재함", "결재 대기"');
   lines.push('- team_attendance : 오늘 부서/전체 출근 현황(관리자 전용 — 부서장은 자기 부서, 대표/인사담당은 전체). 부르는 말: "오늘 출근 현황", "누가 결근", "오늘 누가 안 왔어", "우리 부서 근태"');
   lines.push('조회 요청은 정확히 이 형식으로 출력한다: <<QUERY>>{"queryId":"해당id"}<<END>>');
-  lines.push("<<QUERY>>는 한 답변에 하나만 출력하고, <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
+  lines.push("여러 항목을 물으면 항목마다 <<QUERY>>를 하나씩 여러 개 출력해도 된다. 단 <<QUERY>>는 <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
 
   return lines.join("\n");
 }
