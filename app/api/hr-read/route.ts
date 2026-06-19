@@ -12,6 +12,9 @@ export const dynamic = "force-dynamic";
 // queryId → HR 내부 엔드포인트 매핑. 새 스코프 조회는 여기에만 추가한다.
 const QUERY_ROUTES: Record<string, { path: string }> = {
   my_annual_leave: { path: "/api/internal/my-annual-leave" },
+  external_work: { path: "/api/internal/external-work" },
+  employee_list: { path: "/api/internal/employees" },
+  attendance_categories: { path: "/api/internal/categories" },
 };
 
 function errName(e: unknown): string {
@@ -57,6 +60,12 @@ export async function POST(req: Request) {
       qs.set("year", String(year));
     } else if (typeof year === "string" && /^\d{4}$/.test(year)) {
       qs.set("year", year);
+    }
+  }
+  if (queryId === "employee_list") {
+    const search = params.search;
+    if (typeof search === "string" && search.trim()) {
+      qs.set("search", search.trim().slice(0, 50));
     }
   }
   const url = qs.toString() ? `${apiUrl}${route.path}?${qs}` : `${apiUrl}${route.path}`;

@@ -223,6 +223,27 @@ function formatQueryResult(queryId: string, data: unknown): string {
     }
     return `${d.year}년 잔여 연차: ${d.remaining}일 (부여 ${d.granted} / 사용 ${d.used})`;
   }
+  if (queryId === "external_work") {
+    const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return "외근 신청 내역이 없습니다.";
+    return "외근 현황:\n" + rows.slice(0, 30).map((r) =>
+      `· ${r.employeeName ?? "?"}(${r.departmentName ?? "-"}) ${r.startDate}~${r.endDate} [${r.status}]`
+    ).join("\n");
+  }
+  if (queryId === "employee_list") {
+    const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return "직원이 없습니다.";
+    return "직원 목록:\n" + rows.slice(0, 50).map((r) =>
+      `· ${r.name ?? "?"} (${r.employeeNo ?? "-"}) ${r.departmentName ?? ""} ${r.positionName ?? ""}`.trim()
+    ).join("\n");
+  }
+  if (queryId === "attendance_categories") {
+    const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return "근태 항목이 없습니다.";
+    return "근태 항목:\n" + rows.map((r) =>
+      `· ${r.name ?? "?"} (${r.code ?? "-"})`
+    ).join("\n");
+  }
   return "조회 결과를 표시할 수 없습니다.";
 }
 
