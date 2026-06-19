@@ -26,9 +26,10 @@ export async function GET() {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const [inventory, equipment] = await Promise.all([
+  const [inventory, equipment, hr] = await Promise.all([
     fetchSchemas(process.env.INVENTORY_API_URL, process.env.MCP_API_TOKEN),
     fetchSchemas(process.env.EQUIPMENT_API_URL, process.env.EQUIP_MCP_TOKEN),
+    fetchSchemas(process.env.HR_API_URL, process.env.HR_PORTAL_TOKEN),
   ]);
-  return NextResponse.json([...inventory, ...equipment]);
+  return NextResponse.json([...inventory, ...equipment, ...hr]);
 }

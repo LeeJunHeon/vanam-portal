@@ -129,11 +129,12 @@ async function fetchSchemasFrom(apiUrl?: string, token?: string): Promise<Schema
 
 // 재고 + 장비 스키마 병합 (둘 다 비면 null → 스키마 없이 진행)
 async function fetchSchemas(): Promise<SchemaOp[] | null> {
-  const [inventory, equipment] = await Promise.all([
+  const [inventory, equipment, hr] = await Promise.all([
     fetchSchemasFrom(process.env.INVENTORY_API_URL, process.env.MCP_API_TOKEN),
     fetchSchemasFrom(process.env.EQUIPMENT_API_URL, process.env.EQUIP_MCP_TOKEN),
+    fetchSchemasFrom(process.env.HR_API_URL, process.env.HR_PORTAL_TOKEN),
   ]);
-  const merged = [...inventory, ...equipment];
+  const merged = [...inventory, ...equipment, ...hr];
   return merged.length > 0 ? merged : null;
 }
 

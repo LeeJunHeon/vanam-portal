@@ -521,7 +521,12 @@ export default function ChatWidget() {
     );
     const op = schemas.find((s) => s.id === data.opId);
     const opLabel = op?.label ?? "작업";
-    const writeEndpoint = op?.app === "equipment" ? "/api/equipment-write" : "/api/inventory-write";
+    const writeEndpoint =
+      op?.app === "hr"
+        ? "/api/hr-write"
+        : op?.app === "equipment"
+        ? "/api/equipment-write"
+        : "/api/inventory-write";
     try {
       const res = await fetch(writeEndpoint, {
         method: "POST",
