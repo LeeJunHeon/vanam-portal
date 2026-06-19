@@ -103,7 +103,7 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
   lines.push('- my_stats : 본인 이번달 근태 통계. 부르는 말: "내 통계", "이번달 출근일수", "내 근태 요약"');
   lines.push('- my_presence : 본인 현재 재실/출근 상태. 부르는 말: "나 지금 출근", "내 재실 상태", "나 근무중이야"');
   lines.push('- my_approvals : 본인이 결재할 대기 건. 부르는 말: "내가 결재할 거 있어", "내 결재함", "결재 대기"');
-  lines.push('- team_attendance : 오늘 부서/전체 출근 현황(관리자 전용 — 부서장은 자기 부서, 대표/인사담당은 전체). 부르는 말: "오늘 출근 현황", "누가 결근", "오늘 누가 안 왔어", "우리 부서 근태"');
+  lines.push('- team_attendance : 특정일(기본 오늘) 부서/전체 출근 현황 — 출근/지각/조퇴/휴가외근/결근 집계와 지각·결근 명단(관리자 전용, 부서장은 자기 부서). 어제나 특정 날짜는 params.date에 "YYYY-MM-DD"를 넣는다. 예: <<QUERY>>{"queryId":"team_attendance","params":{"date":"2026-06-18"}}<<END>>. 부르는 말: "오늘 출근 현황", "누가 지각", "누가 결근", "어제 지각한 사람", "우리 부서 근태"');
   lines.push('조회 요청은 정확히 이 형식으로 출력한다: <<QUERY>>{"queryId":"해당id"}<<END>>');
   lines.push("여러 항목을 물으면 항목마다 <<QUERY>>를 하나씩 여러 개 출력해도 된다. 단 <<QUERY>>는 <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
 

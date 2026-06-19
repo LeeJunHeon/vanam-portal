@@ -74,6 +74,12 @@ export async function POST(req: Request) {
       qs.set("search", search.trim().slice(0, 50));
     }
   }
+  if (queryId === "team_attendance") {
+    const date = params.date;
+    if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      qs.set("date", date);
+    }
+  }
   const url = qs.toString() ? `${apiUrl}${route.path}?${qs}` : `${apiUrl}${route.path}`;
 
   try {

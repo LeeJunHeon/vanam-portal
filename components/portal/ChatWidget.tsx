@@ -277,11 +277,16 @@ function formatQueryResult(queryId: string, data: unknown): string {
   if (queryId === "team_attendance") {
     if (d.allowed === false) return "이 조회는 관리자(부서장/인사담당/대표)만 가능합니다.";
     const scopeLabel = d.scope === "all" ? "전체" : "우리 부서";
-    const absent = (Array.isArray(d.absentList) ? d.absentList : []) as Array<Record<string, unknown>>;
+    const lateL = (Array.isArray(d.lateList) ? d.lateList : []) as Array<Record<string, unknown>>;
+    const absentL = (Array.isArray(d.absentList) ? d.absentList : []) as Array<Record<string, unknown>>;
     const leaveL = (Array.isArray(d.leaveList) ? d.leaveList : []) as Array<Record<string, unknown>>;
-    let out = `${d.date} ${scopeLabel} 출근 현황 (총 ${d.total}명):\n· 출근 ${d.present} · 휴가/외근 ${d.leave} · 결근 ${d.absent}`;
-    if (absent.length > 0) {
-      out += `\n[결근] ` + absent.map((a) => `${a.name ?? "?"}(${a.departmentName ?? "-"})`).join(", ");
+    let out = `${d.date} ${scopeLabel} 출근 현황 (총 ${d.total}명):\n· 출근 ${d.present} · 지각 ${d.late} · 조퇴 ${d.earlyLeave} · 휴가/외근 ${d.leave} · 결근 ${d.absent}`;
+    if (typeof d.pending === "number" && d.pending > 0) out += ` · 미출근 ${d.pending}`;
+    if (lateL.length > 0) {
+      out += `\n[지각] ` + lateL.map((a) => `${a.name ?? "?"}${a.checkIn ? `(${a.checkIn})` : ""}`).join(", ");
+    }
+    if (absentL.length > 0) {
+      out += `\n[결근] ` + absentL.map((a) => `${a.name ?? "?"}(${a.departmentName ?? "-"})`).join(", ");
     }
     if (leaveL.length > 0) {
       out += `\n[휴가/외근] ` + leaveL.map((a) => `${a.name ?? "?"}(${a.categoryName ?? ""})`).join(", ");
