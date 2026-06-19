@@ -15,6 +15,9 @@ const QUERY_ROUTES: Record<string, { path: string }> = {
   external_work: { path: "/api/internal/external-work" },
   employee_list: { path: "/api/internal/employees" },
   attendance_categories: { path: "/api/internal/categories" },
+  my_attendance: { path: "/api/internal/my-attendance" },
+  my_requests: { path: "/api/internal/my-requests" },
+  my_stats: { path: "/api/internal/my-stats" },
 };
 
 function errName(e: unknown): string {

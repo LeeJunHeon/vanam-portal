@@ -223,6 +223,33 @@ function formatQueryResult(queryId: string, data: unknown): string {
     }
     return `${d.year}년 잔여 연차: ${d.remaining}일 (부여 ${d.granted} / 사용 ${d.used})`;
   }
+  if (queryId === "my_attendance") {
+    if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
+    const recs = (Array.isArray(d.records) ? d.records : []) as Array<Record<string, unknown>>;
+    if (recs.length === 0) return `${d.month} 근태 기록이 없습니다.`;
+    const hm = (iso: unknown) => {
+      if (!iso) return "-";
+      const t = new Date(String(iso)).getTime() + 9 * 60 * 60 * 1000;
+      return new Date(t).toISOString().slice(11, 16);
+    };
+    return `${d.month} 근태 기록:\n` + recs.map((r) => {
+      if (r.categoryName) return `· ${r.workDate} ${r.categoryName}`;
+      const wm = typeof r.workMinutes === "number" ? r.workMinutes : 0;
+      return `· ${r.workDate} 출근 ${hm(r.checkIn)} 퇴근 ${hm(r.checkOut)} (${Math.floor(wm / 60)}h${wm % 60}m)`;
+    }).join("\n");
+  }
+  if (queryId === "my_requests") {
+    if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
+    const reqs = (Array.isArray(d.requests) ? d.requests : []) as Array<Record<string, unknown>>;
+    if (reqs.length === 0) return "신청 내역이 없습니다.";
+    return "내 신청 내역:\n" + reqs.map((r) =>
+      `· ${r.categoryName ?? "?"} ${r.startDate}~${r.endDate} [${r.status}]`
+    ).join("\n");
+  }
+  if (queryId === "my_stats") {
+    if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
+    return `${d.month} 내 근태 통계:\n· 출근 ${d.attended}일\n· 휴가 ${d.leaveDays}일\n· 신청 대기 ${d.pending}건\n· 승인됨 ${d.completed}건`;
+  }
   if (queryId === "external_work") {
     const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
     if (rows.length === 0) return "외근 신청 내역이 없습니다.";
