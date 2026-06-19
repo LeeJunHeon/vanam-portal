@@ -18,6 +18,8 @@ const QUERY_ROUTES: Record<string, { path: string }> = {
   my_attendance: { path: "/api/internal/my-attendance" },
   my_requests: { path: "/api/internal/my-requests" },
   my_stats: { path: "/api/internal/my-stats" },
+  my_presence: { path: "/api/internal/my-presence" },
+  my_approvals: { path: "/api/internal/my-approvals" },
 };
 
 function errName(e: unknown): string {

@@ -250,6 +250,25 @@ function formatQueryResult(queryId: string, data: unknown): string {
     if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
     return `${d.month} 내 근태 통계:\n· 출근 ${d.attended}일\n· 휴가 ${d.leaveDays}일\n· 신청 대기 ${d.pending}건\n· 승인됨 ${d.completed}건`;
   }
+  if (queryId === "my_presence") {
+    if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
+    const st = d.currentStatus;
+    const label = st === "online" ? "근무 중" : st === "offline" ? "오프라인" : "오늘 재실 기록 없음";
+    const hm = (iso: unknown) => {
+      if (!iso) return "-";
+      const t = new Date(String(iso)).getTime() + 9 * 60 * 60 * 1000;
+      return new Date(t).toISOString().slice(11, 16);
+    };
+    return `현재 재실 상태: ${label}\n· 마지막 출근: ${hm(d.lastOnlineAt)}\n· 마지막 오프라인: ${hm(d.lastOfflineAt)}`;
+  }
+  if (queryId === "my_approvals") {
+    if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
+    const aps = (Array.isArray(d.approvals) ? d.approvals : []) as Array<Record<string, unknown>>;
+    if (aps.length === 0) return "결재할 건이 없습니다.";
+    return `내가 결재할 건 (${aps.length}건):\n` + aps.map((a) =>
+      `· ${a.requesterName ?? "?"}(${a.departmentName ?? "-"}) ${a.categoryName ?? ""} ${a.startDate}~${a.endDate}`
+    ).join("\n");
+  }
   if (queryId === "external_work") {
     const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
     if (rows.length === 0) return "외근 신청 내역이 없습니다.";
