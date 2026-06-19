@@ -195,6 +195,37 @@ function parseDatetimeRequest(content: string): { isDatetime: boolean; cleanedTe
   return { isDatetime: true, cleanedText };
 }
 
+// <<QUERY>> { "queryId":"...", "params":{...} } <<END>> 형태를 추출. (읽기 조회 요청)
+function parseQueryRequest(content: string): { queryId: string; params: Record<string, unknown>; cleanedText: string } | null {
+  const match = content.match(/<<QUERY>>([\s\S]*?)<<END>>/);
+  if (!match) return null;
+  try {
+    const obj = JSON.parse(match[1].trim()) as Record<string, unknown>;
+    const queryId = typeof obj.queryId === "string" ? obj.queryId : "";
+    if (!queryId) return null;
+    const params =
+      obj.params && typeof obj.params === "object" && !Array.isArray(obj.params)
+        ? (obj.params as Record<string, unknown>)
+        : {};
+    const cleanedText = content.replace(match[0], "").trim();
+    return { queryId, params, cleanedText };
+  } catch {
+    return null;
+  }
+}
+
+// 조회 결과(데이터) → 사람이 읽을 텍스트. queryId별 표시. 모르면 폴백.
+function formatQueryResult(queryId: string, data: unknown): string {
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (queryId === "my_annual_leave") {
+    if (d.mapped === false) {
+      return "연차 정보가 등록되어 있지 않습니다. 관리자에게 직원 등록을 요청하세요.";
+    }
+    return `${d.year}년 잔여 연차: ${d.remaining}일 (부여 ${d.granted} / 사용 ${d.used})`;
+  }
+  return "조회 결과를 표시할 수 없습니다.";
+}
+
 // 확인 카드 내용 생성: 스키마 cardShow 기반. op 없거나 cardShow 없으면 values 나열(폴백).
 // id_ref 필드는 이름값(...Name)을 우선 표시. 값 없는 필드는 건너뜀.
 function buildCard(
@@ -507,6 +538,29 @@ export default function ChatWidget() {
       setMessages((prev) => [...prev, assistantMsg]);
 
       // 화면 표시용: 작업 데이터(DATA) → 카드 / 스캔요청(SCAN) → 카메라·갤러리 버튼 / 그 외 → 텍스트
+      const query = parseQueryRequest(content);
+      if (query) {
+        if (query.cleanedText) {
+          appendDisplay({ role: "assistant", text: query.cleanedText, createdAt: Date.now() });
+        }
+        try {
+          const qres = await fetch("/api/hr-read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ queryId: query.queryId, params: query.params }),
+          });
+          const qjson = await qres.json().catch(() => ({}));
+          const text =
+            qres.ok && qjson?.ok
+              ? formatQueryResult(query.queryId, qjson.data)
+              : "조회에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+          appendDisplay({ role: "assistant", text, createdAt: Date.now() });
+        } catch {
+          appendDisplay({ role: "assistant", text: "조회 중 오류가 발생했습니다.", isError: true, createdAt: Date.now() });
+        }
+        return;
+      }
+
       const proposal = parseOperationData(content);
       if (proposal) {
         appendDisplay({

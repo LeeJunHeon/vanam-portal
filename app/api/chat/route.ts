@@ -92,6 +92,12 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
       lines.push(`    - ${f.name}(${f.label}) ${req}: ${f.type}${enumPart}${lookupPart}${validationPart}`);
     }
   }
+  lines.push("");
+  lines.push("[조회 가능 항목] (사용자가 '본인' 정보를 물으면 아래 형식으로 조회를 요청한다)");
+  lines.push('- my_annual_leave : 본인 잔여 연차. 부르는 말: "내 연차", "남은 연차", "연차 며칠 남았어"');
+  lines.push('조회 요청은 정확히 이 형식으로 출력한다: <<QUERY>>{"queryId":"해당id"}<<END>>');
+  lines.push("<<QUERY>>는 한 답변에 하나만 출력하고, <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
+
   return lines.join("\n");
 }
 
