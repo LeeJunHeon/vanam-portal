@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Package, Clock, ExternalLink } from "lucide-react";
 
-const INVENTORY_URL = "https://inventory.vanam.synology.me";
+const INVENTORY_URL = "/inventory";
 
 interface PortalSummary {
   totalItems: number;

@@ -9,7 +9,7 @@ interface AlertItem {
   sub: string;
 }
 
-const EQUIPMENT_BASE = "https://equipment.vanam.synology.me";
+const EQUIPMENT_BASE = "/equipment";
 
 const CERT_EXPIRY = new Date("2026-06-29");
 

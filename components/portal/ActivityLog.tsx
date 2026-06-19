@@ -11,8 +11,8 @@ interface LogItem {
   href: string;
 }
 
-const EQUIPMENT_BASE = "https://equipment.vanam.synology.me";
-const INVENTORY_BASE = "https://inventory.vanam.synology.me";
+const EQUIPMENT_BASE = "/equipment";
+const INVENTORY_BASE = "/inventory";
 
 function timeAgo(isoStr: string): string {
   const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);

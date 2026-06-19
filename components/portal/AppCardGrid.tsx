@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Package, Wrench, Calendar, Workflow } from "lucide-react";
 import AppCard from "@/components/portal/AppCard";
 
-const INVENTORY_BASE = "https://inventory.vanam.synology.me";
-const EQUIPMENT_BASE = "https://equipment.vanam.synology.me";
+const INVENTORY_BASE = "/inventory";
+const EQUIPMENT_BASE = "/equipment";
 const HR_BASE = "https://hr.vanam.synology.me";
 const PROCESS_BASE = "https://process.vanam.synology.me";
 
