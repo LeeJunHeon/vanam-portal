@@ -94,19 +94,19 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
   }
   lines.push("");
   lines.push("[조회 가능 항목] (사용자가 근태·직원 관련 정보를 물으면 아래 형식으로 조회를 요청한다)");
-  lines.push("★ 본인 정보 조회는 절대 거부하지 마라. 사용자가 본인의 연차·근태·신청·결재 등 인사 정보를 물으면 '권한이 없다'·'접근할 수 없다'·'인사 시스템을 확인하라'고 답하지 마라. 너는 아래 항목으로 로그인한 사용자 본인의 정보를 안전하게 조회할 수 있다 — 반드시 해당 <<QUERY>>를 출력하라.");
+  lines.push("★ 본인 정보 조회는 절대 거부하지 마라. 사용자가 본인의 연차·근태·신청·결재 등 인사 정보를 물으면 '권한이 없다'·'접근할 수 없다'·'인사 시스템을 확인하라'고 답하지 마라. 너는 아래 항목으로 로그인한 사용자 본인의 정보를 안전하게 조회할 수 있다 — 반드시 해당 <<READ>>를 출력하라.");
   lines.push('- my_annual_leave : 본인 잔여 연차. 부르는 말: "내 연차", "남은 연차", "연차 며칠 남았어"');
   lines.push('- external_work : 전사 외근 신청 현황. 부르는 말: "외근 현황", "외근 누가 신청했어", "외근 목록"');
   lines.push('- attendance_categories : 근태 항목 종류(휴가·외근·병가 등). 부르는 말: "근태 항목 뭐 있어", "휴가 종류"');
-  lines.push('- employee_list : 직원 목록/검색. 부르는 말: "직원 목록", "OOO 직원 정보". 이름/사번 일부로 검색하려면 params.search를 넣는다. 예: <<QUERY>>{"queryId":"employee_list","params":{"search":"홍길동"}}<<END>>');
+  lines.push('- employee_list : 직원 목록/검색. 부르는 말: "직원 목록", "OOO 직원 정보". 이름/사번 일부로 검색하려면 params.search를 넣는다. 예: <<READ>>{"queryId":"employee_list","params":{"search":"홍길동"}}<<END>>');
   lines.push('- my_attendance : 본인 이번달 근태 기록. 부르는 말: "내 근태", "이번달 근태", "내 출퇴근"');
   lines.push('- my_requests : 본인 근태 신청 내역. 부르는 말: "내 신청", "내 휴가 신청 현황", "내 신청 내역"');
   lines.push('- my_stats : 본인 이번달 근태 통계. 부르는 말: "내 통계", "이번달 출근일수", "내 근태 요약"');
   lines.push('- my_presence : 본인 현재 재실/출근 상태. 부르는 말: "나 지금 출근", "내 재실 상태", "나 근무중이야"');
   lines.push('- my_approvals : 본인이 결재할 대기 건. 부르는 말: "내가 결재할 거 있어", "내 결재함", "결재 대기"');
-  lines.push('- team_attendance : 특정일(기본 오늘) 부서/전체 출근 현황 — 출근/지각/조퇴/휴가외근/결근 집계와 지각·결근 명단(관리자 전용, 부서장은 자기 부서). 어제나 특정 날짜는 params.date에 "YYYY-MM-DD"를 넣는다. 예: <<QUERY>>{"queryId":"team_attendance","params":{"date":"2026-06-18"}}<<END>>. 부르는 말: "오늘 출근 현황", "누가 지각", "누가 결근", "어제 지각한 사람", "우리 부서 근태"');
-  lines.push('조회 요청은 정확히 이 형식으로 출력한다: <<QUERY>>{"queryId":"해당id"}<<END>>');
-  lines.push("여러 항목을 물으면 항목마다 <<QUERY>>를 하나씩 여러 개 출력해도 된다. 단 <<QUERY>>는 <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
+  lines.push('- team_attendance : 특정일(기본 오늘) 부서/전체 출근 현황 — 출근/지각/조퇴/휴가외근/결근 집계와 지각·결근 명단(관리자 전용, 부서장은 자기 부서). 어제나 특정 날짜는 params.date에 "YYYY-MM-DD"를 넣는다. 예: <<READ>>{"queryId":"team_attendance","params":{"date":"2026-06-18"}}<<END>>. 부르는 말: "오늘 출근 현황", "누가 지각", "누가 결근", "어제 지각한 사람", "우리 부서 근태"');
+  lines.push('조회 요청은 정확히 이 형식으로 출력한다: <<READ>>{"queryId":"해당id"}<<END>>');
+  lines.push("여러 항목을 물으면 항목마다 <<READ>>를 하나씩 여러 개 출력해도 된다. 단 <<READ>>는 <<DATA>>/<<SCAN>>/<<DATETIME>>와 동시에 쓰지 않는다. 조회 요청 시 긴 설명은 생략한다.");
 
   return lines.join("\n");
 }

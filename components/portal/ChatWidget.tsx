@@ -195,9 +195,9 @@ function parseDatetimeRequest(content: string): { isDatetime: boolean; cleanedTe
   return { isDatetime: true, cleanedText };
 }
 
-// <<QUERY>> { "queryId":"...", "params":{...} } <<END>> 형태를 추출. (읽기 조회 요청)
+// <<READ>> { "queryId":"...", "params":{...} } <<END>> 형태를 추출. (읽기 조회 요청)
 function parseAllQueryRequests(content: string): { queries: Array<{ queryId: string; params: Record<string, unknown> }>; cleanedText: string } | null {
-  const re = /<<QUERY>>([\s\S]*?)<<END>>/g;
+  const re = /<<READ>>([\s\S]*?)<<END>>/g;
   const queries: Array<{ queryId: string; params: Record<string, unknown> }> = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(content)) !== null) {
@@ -215,7 +215,7 @@ function parseAllQueryRequests(content: string): { queries: Array<{ queryId: str
     }
   }
   if (queries.length === 0) return null;
-  const cleanedText = content.replace(/<<QUERY>>[\s\S]*?<<END>>/g, "").trim();
+  const cleanedText = content.replace(/<<READ>>[\s\S]*?<<END>>/g, "").trim();
   return { queries, cleanedText };
 }
 
