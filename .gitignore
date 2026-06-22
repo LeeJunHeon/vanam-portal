@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated client
+/app/generated
+
 # 환경변수 (가장 중요)
 .env
 .env.local

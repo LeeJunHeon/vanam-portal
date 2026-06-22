@@ -24,6 +24,17 @@ export default auth((req: NextRequest & { auth: any }) => {
     return NextResponse.next();
   }
 
+  // /api/internal/* 는 머신 토큰으로 자체 인증 — 세션 불필요
+  if (pathname.startsWith("/api/internal")) {
+    return NextResponse.next();
+  }
+
+  // PWA 정적 자산(manifest.json, sw.js, 아이콘)은 인증 없이 통과
+  // (브라우저가 자격증명 없이 요청하므로 인증 redirect가 끼면 PWA가 깨짐)
+  if (/\.(?:json|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // 미인증 시 포털 로그인으로 리다이렉트
   if (!req.auth?.user) {
     return NextResponse.redirect(new URL("/login", req.url));

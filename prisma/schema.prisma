@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["portal", "hr"]
+}
+
+// 구독 테이블 (portal 스키마 — 포털 소유)
+model PushSubscription {
+  id         Int       @id @default(autoincrement())
+  employeeId Int       @map("employee_id")
+  endpoint   String    @unique
+  p256dhKey  String    @map("p256dh_key")
+  authKey    String    @map("auth_key")
+  userAgent  String?   @map("user_agent")
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, isActive], map: "idx_portal_push_subs_emp")
+  @@map("push_subscriptions")
+  @@schema("portal")
+}
+
+// hr.employees 읽기 전용 매핑 (email → employeeId 해석용, 필요 필드만)
+model Employee {
+  id    Int    @id
+  email String @unique
+
+  @@map("employees")
+  @@schema("hr")
+}

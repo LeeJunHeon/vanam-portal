@@ -1,12 +1,28 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
+import PushManager from "@/components/PushManager";
 import ChatWidget from "@/components/portal/ChatWidget";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "VanaM Platform",
   description: "VanaM 통합 플랫폼",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "VanaM",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1e3a8a",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({
@@ -27,6 +43,7 @@ export default async function RootLayout({
         <SessionProvider>
           {children}
           {session?.user && <ChatWidget />}
+          <PushManager />
         </SessionProvider>
       </body>
     </html>
