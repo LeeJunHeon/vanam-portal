@@ -6,7 +6,7 @@ import AppCard from "@/components/portal/AppCard";
 
 const INVENTORY_BASE = "/inventory";
 const EQUIPMENT_BASE = "/equipment";
-const HR_BASE = "https://hr.vanam.synology.me";
+const HR_BASE = "/hr";
 const PROCESS_BASE = "https://process.vanam.synology.me";
 
 export default function AppCardGrid() {

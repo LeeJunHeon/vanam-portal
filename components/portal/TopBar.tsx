@@ -41,9 +41,9 @@ export default function TopBar() {
         {/* 우측: 알림 + 사용자 정보 + 로그아웃 */}
         <div className="flex items-center gap-2 sm:gap-3">
           <NotificationBell
-            apiUrl="https://hr.vanam.synology.me/api/portal-notifications"
+            apiUrl="/hr/api/portal-notifications"
             crossOrigin
-            absoluteBase="https://hr.vanam.synology.me"
+            absoluteBase="/hr"
           />
           <div className="flex items-center gap-3 px-2 py-1">
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
