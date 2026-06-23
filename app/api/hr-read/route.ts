@@ -80,6 +80,22 @@ export async function POST(req: Request) {
       qs.set("date", date);
     }
   }
+  if (
+    queryId === "my_attendance" ||
+    queryId === "my_stats" ||
+    queryId === "my_requests" ||
+    queryId === "external_work"
+  ) {
+    const period = params.period;
+    const allowedPeriods = ["this_week", "last_week", "this_month", "last_month", "this_year"];
+    if (typeof period === "string" && allowedPeriods.includes(period)) {
+      qs.set("period", period);
+    }
+    const ym = params.yearMonth;
+    if (typeof ym === "string" && /^\d{4}-\d{2}$/.test(ym)) {
+      qs.set("yearMonth", ym);
+    }
+  }
   const url = qs.toString() ? `${apiUrl}${route.path}?${qs}` : `${apiUrl}${route.path}`;
 
   try {
