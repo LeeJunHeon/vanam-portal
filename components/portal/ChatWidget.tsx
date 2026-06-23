@@ -293,6 +293,24 @@ function formatQueryResult(queryId: string, data: unknown): string {
     }
     return out;
   }
+  if (queryId === "my_trips") {
+    if (d.mapped === false) return "직원 정보가 등록되어 있지 않습니다.";
+    const trips = (Array.isArray(d.trips) ? d.trips : []) as Array<Record<string, unknown>>;
+    if (trips.length === 0) return "출장 내역이 없습니다.";
+    const inv = (s: unknown) => (s === "accepted" ? "수락" : s === "declined" ? "거부" : s === "invited" ? "초대됨" : String(s ?? ""));
+    const apr = (s: unknown) => (s === "approved" ? "승인" : s === "rejected" ? "반려" : s === "pending" ? "결재대기" : String(s ?? ""));
+    return "내 출장:\n" + trips.map((t) =>
+      `· ${t.name ?? "?"}${t.location ? `(${t.location})` : ""} ${t.startDate}~${t.endDate} [초대:${inv(t.inviteStatus)}/결재:${apr(t.approvalStatus)}]`
+    ).join("\n");
+  }
+  if (queryId === "my_leave_detail") {
+    if (d.mapped === false) return "연차 정보가 등록되어 있지 않습니다.";
+    const items = (Array.isArray(d.items) ? d.items : []) as Array<Record<string, unknown>>;
+    if (items.length === 0) return `${d.year}년 연차 사용 내역이 없습니다.`;
+    return `${d.year}년 연차 사용 내역 (총 ${d.totalUsed}일):\n` + items.map((it) =>
+      `· ${it.startDate}~${it.endDate} ${it.categoryName ?? ""} (${it.usedDays}일)`
+    ).join("\n");
+  }
   if (queryId === "external_work") {
     const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
     if (rows.length === 0) return "외근 신청 내역이 없습니다.";

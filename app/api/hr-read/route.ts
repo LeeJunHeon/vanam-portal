@@ -21,6 +21,8 @@ const QUERY_ROUTES: Record<string, { path: string }> = {
   my_presence: { path: "/api/internal/my-presence" },
   my_approvals: { path: "/api/internal/my-approvals" },
   team_attendance: { path: "/api/internal/team-attendance" },
+  my_trips: { path: "/api/internal/my-trips" },
+  my_leave_detail: { path: "/api/internal/my-leave-detail" },
 };
 
 function errName(e: unknown): string {
@@ -94,6 +96,25 @@ export async function POST(req: Request) {
     const ym = params.yearMonth;
     if (typeof ym === "string" && /^\d{4}-\d{2}$/.test(ym)) {
       qs.set("yearMonth", ym);
+    }
+  }
+  if (queryId === "my_trips") {
+    const period = params.period;
+    const allowedPeriods = ["this_week", "last_week", "this_month", "last_month", "this_year"];
+    if (typeof period === "string" && allowedPeriods.includes(period)) {
+      qs.set("period", period);
+    }
+    const ym = params.yearMonth;
+    if (typeof ym === "string" && /^\d{4}-\d{2}$/.test(ym)) {
+      qs.set("yearMonth", ym);
+    }
+  }
+  if (queryId === "my_leave_detail") {
+    const year = params.year;
+    if (typeof year === "number" && Number.isInteger(year)) {
+      qs.set("year", String(year));
+    } else if (typeof year === "string" && /^\d{4}$/.test(year)) {
+      qs.set("year", year);
     }
   }
   const url = qs.toString() ? `${apiUrl}${route.path}?${qs}` : `${apiUrl}${route.path}`;
