@@ -1,4 +1,4 @@
-import { type LucideIcon } from "lucide-react";
+import { type LucideIcon, Wifi, WifiOff } from "lucide-react";
 
 interface AppCardProps {
   icon: LucideIcon;
@@ -10,6 +10,7 @@ interface AppCardProps {
   status?: "online" | "offline" | "pending" | "developing";
   stat1?: string;
   stat2?: string;
+  connState?: "online" | "offline";
 }
 
 export default function AppCard({
@@ -22,6 +23,7 @@ export default function AppCard({
   status = "online",
   stat1,
   stat2,
+  connState,
 }: AppCardProps) {
   const badge =
     status === "pending"
@@ -91,6 +93,13 @@ export default function AppCard({
           <span style={{ fontSize: "11px", color: "#9ca3af" }}>개발 예정</span>
         ) : (
           <>
+            {connState && (
+              connState === "online" ? (
+                <Wifi size={13} className="text-emerald-500 flex-shrink-0" />
+              ) : (
+                <WifiOff size={13} className="text-gray-400 flex-shrink-0" />
+              )
+            )}
             {stat1 && (
               <span style={{ fontSize: "11px", color: "#6b7280" }}>{stat1}</span>
             )}

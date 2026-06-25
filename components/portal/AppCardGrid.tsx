@@ -19,6 +19,7 @@ export default function AppCardGrid() {
   const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("online");
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
+  const [hrConnState, setHrConnState] = useState<"online" | "offline" | undefined>(undefined);
 
   useEffect(() => {
     // 재고관리 요약
@@ -48,17 +49,10 @@ export default function AppCardGrid() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d || !d.hasEmployee) return; // 미로그인/미매핑이면 표시 안 함
-        // 근태 시스템 progressStatus를 그대로 표시 (statusLabel) + 상태별 색 이모지
-        const ps = d.progressStatus;
-        const label = d.statusLabel || "";
-        const dot =
-          ps === "working" ? "🟢" :
-          ps === "away" ? "🟡" :
-          ps === "completed" ? "🔵" :
-          ps === "absent_today" ? "⚪" :
-          (ps === "category_working" || ps === "category_completed") ? "🟣" :
-          "⚪";
-        setHrStat1(label ? `${dot} ${label}` : undefined);
+        // 연결중 / 연결 끊김 2가지로 단순화 (working = WiFi 연결, 그 외 = 끊김)
+        const connected = d.progressStatus === "working";
+        setHrConnState(connected ? "online" : "offline");
+        setHrStat1(connected ? "연결중" : "연결 끊김");
         const w = d.week ?? {};
         setHrStat2(
           `이번주 정상 ${w.normal ?? 0} · 지각 ${w.late ?? 0} · 조퇴 ${w.earlyLeave ?? 0} · 결근 ${w.absent ?? 0}`
@@ -145,6 +139,7 @@ export default function AppCardGrid() {
           href={card.href}
           stat1={card.stat1}
           stat2={card.stat2}
+          connState={card.href === HR_BASE ? hrConnState : undefined}
         />
       ))}
     </div>
