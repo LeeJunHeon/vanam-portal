@@ -19,6 +19,7 @@ export default function AppCardGrid() {
   const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
   const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("online");
   const [officeStatus, setOfficeStatus] = useState<"online" | "offline" | "pending">("online");
+  const [officeStat1, setOfficeStat1] = useState<string | undefined>(undefined);
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
   const [hrConnState, setHrConnState] = useState<"online" | "offline" | undefined>(undefined);
@@ -76,6 +77,15 @@ export default function AppCardGrid() {
         setHrStat2(
           `이번주 정상 ${w.normal ?? 0} · 지각 ${w.late ?? 0} · 조퇴 ${w.earlyLeave ?? 0} · 결근 ${w.absent ?? 0}`
         );
+      })
+      .catch(() => {});
+
+    // 경영지원 요약
+    fetch(`${OFFICE_BASE}/api/portal-summary`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setOfficeStat1(`지재권 ${d.patents ?? 0} · 장비 ${d.assets ?? 0} · 인사 ${d.personalInfo ?? 0}`);
       })
       .catch(() => {});
 
@@ -141,9 +151,10 @@ export default function AppCardGrid() {
       iconBgColor: "#eef2ff",
       iconColor: "#6366f1",
       title: "경영 지원",
-      description: "지식재산권·자산·인사정보 통합 관리",
+      description: "지식재산권·장비관리대장·인사정보카드 통합 관리",
       status: officeStatus,
       href: OFFICE_BASE,
+      stat1: officeStat1,
       adminOnly: true,
     },
     {
