@@ -26,10 +26,19 @@ export default function AppCardGrid() {
 
   useEffect(() => {
     // [역할 필터용] 로그인 사용자 role 조회
-    // 포털엔 role 소스가 없어 같은 도메인의 근태앱 /hr/api/me(ceo/admin/employee 반환)를 사용
+    // 새로고침 깜빡임 방지: 캐시된 role로 먼저 즉시 판단
+    try {
+      const cached = sessionStorage.getItem("portalUserRole");
+      if (cached) setRole(cached);
+    } catch {}
+    // 최신 role 재확인 (근태앱 /hr/api/me = ceo/admin/employee)
     fetch("/hr/api/me", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setRole(d?.role ?? null))
+      .then((d) => {
+        const rr = d?.role ?? null;
+        setRole(rr);
+        try { if (rr) sessionStorage.setItem("portalUserRole", rr); } catch {}
+      })
       .catch(() => {});
 
     // 재고관리 요약
@@ -117,16 +126,6 @@ export default function AppCardGrid() {
       stat2: eqStat2,
     },
     {
-      icon: Briefcase,
-      iconBgColor: "#eef2ff",
-      iconColor: "#6366f1",
-      title: "경영 지원",
-      description: "지식재산권·자산·인사정보 통합 관리",
-      status: officeStatus,
-      href: OFFICE_BASE,
-      adminOnly: true,
-    },
-    {
       icon: Calendar,
       iconBgColor: "#faf5ff",
       iconColor: "#9333ea",
@@ -136,6 +135,16 @@ export default function AppCardGrid() {
       href: HR_BASE,
       stat1: hrStat1,
       stat2: hrStat2,
+    },
+    {
+      icon: Briefcase,
+      iconBgColor: "#eef2ff",
+      iconColor: "#6366f1",
+      title: "경영 지원",
+      description: "지식재산권·자산·인사정보 통합 관리",
+      status: officeStatus,
+      href: OFFICE_BASE,
+      adminOnly: true,
     },
     {
       icon: Workflow,
