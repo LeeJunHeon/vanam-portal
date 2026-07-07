@@ -26,13 +26,8 @@ export default function AppCardGrid() {
 
   useEffect(() => {
     // [역할 필터용] 로그인 사용자 role 조회
-    // 기존 (/api/auth/session — 포털 세션엔 role이 없어서 undefined)
-    //   fetch("/api/auth/session", { credentials: "include" })
-    //     .then((r) => (r.ok ? r.json() : null))
-    //     .then((d) => setRole(d?.user?.role ?? null))
-    //     .catch(() => {});
-    // 변경 (/api/me — 포털 전용 역할 API, { role, isAdmin } 반환)
-    fetch("/api/me", { credentials: "include" })
+    // 포털엔 role 소스가 없어 같은 도메인의 근태앱 /hr/api/me(ceo/admin/employee 반환)를 사용
+    fetch("/hr/api/me", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setRole(d?.role ?? null))
       .catch(() => {});

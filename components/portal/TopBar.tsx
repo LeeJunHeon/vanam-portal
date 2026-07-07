@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LayoutGrid, LogOut } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/NotificationBell";
@@ -8,6 +8,14 @@ import NotificationBell from "@/components/NotificationBell";
 export default function TopBar() {
   const { data: session, status } = useSession();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/hr/api/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setRole(d?.role ?? null))
+      .catch(() => {});
+  }, []);
 
   const userName = session?.user?.name ?? "사용자";
   const isLoading = status === "loading";
@@ -53,7 +61,13 @@ export default function TopBar() {
               <p className="text-sm font-semibold text-gray-900">
                 {isLoading ? "..." : userName}
               </p>
-              <p className="text-[10px] text-gray-400">관리자</p>
+              <p className="text-[10px] text-gray-400">
+                {role === "ceo" ? "대표"
+                  : role === "admin" ? "관리자"
+                  : role === "employee" ? "직원"
+                  : role === "viewer" ? "조회자"
+                  : "-"}
+              </p>
             </div>
             <button
               onClick={() => setShowLogoutConfirm(true)}
