@@ -22,8 +22,15 @@ export default function AppCardGrid() {
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
   const [hrConnState, setHrConnState] = useState<"online" | "offline" | undefined>(undefined);
+  const [role, setRole] = useState<string | null>(null);   // ← 역할 필터용
 
   useEffect(() => {
+    // [역할 필터용] 로그인 사용자 role 조회
+    fetch("/api/auth/session", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setRole(d?.user?.role ?? null))
+      .catch(() => {});
+
     // 재고관리 요약
     fetch(`${INVENTORY_BASE}/api/portal-summary`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
@@ -83,6 +90,8 @@ export default function AppCardGrid() {
     };
   }, []);
 
+  const isAdmin = role === "admin" || role === "ceo";
+
   const CARDS = [
     {
       icon: Package,
@@ -114,6 +123,7 @@ export default function AppCardGrid() {
       description: "지식재산권·자산·인사정보 통합 관리",
       status: officeStatus,
       href: OFFICE_BASE,
+      adminOnly: true,
     },
     {
       icon: Calendar,
@@ -139,7 +149,9 @@ export default function AppCardGrid() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {CARDS.map((card) => (
+      {CARDS
+        .filter((card) => !(card as { adminOnly?: boolean }).adminOnly || isAdmin)
+        .map((card) => (
         <AppCard
           key={card.title}
           icon={card.icon}
