@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Wrench, Calendar, Workflow } from "lucide-react";
+import { Package, Wrench, Calendar, Workflow, Briefcase } from "lucide-react";
 import AppCard from "@/components/portal/AppCard";
 
 const INVENTORY_BASE = "/inventory";
 const EQUIPMENT_BASE = "/equipment";
 const HR_BASE = "/hr";
+const OFFICE_BASE = "/office";
 const PROCESS_BASE = "https://process.vanam.synology.me";
 
 export default function AppCardGrid() {
@@ -17,6 +18,7 @@ export default function AppCardGrid() {
   const [invStatus, setInvStatus] = useState<"online" | "offline" | "pending">("online");
   const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
   const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("online");
+  const [officeStatus, setOfficeStatus] = useState<"online" | "offline" | "pending">("online");
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
   const [hrConnState, setHrConnState] = useState<"online" | "offline" | undefined>(undefined);
@@ -69,6 +71,7 @@ export default function AppCardGrid() {
           setInvStatus(d.containers["inventory-web-nextjs"] === "running" ? "online" : "offline");
           setEqStatus(d.containers["equipment-web-nextjs"]  === "running" ? "online" : "offline");
           setHrStatus(d.containers["hr-nextjs"] === "running" ? "online" : "offline");
+          setOfficeStatus(d.containers["office-web-nextjs"] === "running" ? "online" : "offline");
         })
         .catch(() => {});
     };
@@ -102,6 +105,15 @@ export default function AppCardGrid() {
       href: EQUIPMENT_BASE,
       stat1: eqStat1,
       stat2: eqStat2,
+    },
+    {
+      icon: Briefcase,
+      iconBgColor: "#eef2ff",
+      iconColor: "#6366f1",
+      title: "경영 지원",
+      description: "지식재산권·자산·인사정보 통합 관리",
+      status: officeStatus,
+      href: OFFICE_BASE,
     },
     {
       icon: Calendar,
