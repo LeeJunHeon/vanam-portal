@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -37,9 +37,7 @@ export default function TopBar() {
       >
         {/* 좌측: 로고 */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <LayoutGrid size={16} color="white" strokeWidth={2} />
-          </div>
+          <img src="/icon-v2.png" alt="VanaM" className="w-8 h-8 rounded-lg" />
           <div>
             <h1 className="text-sm font-bold text-gray-900">VanaM</h1>
             <p className="text-[10px] text-gray-400 hidden sm:block">Platform</p>
