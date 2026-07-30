@@ -40,6 +40,7 @@ const SYSTEM_PREAMBLE = `너는 사내 통합 업무 어시스턴트다(재고·
 6. **바코드가 필요한데 어떤 개체인지 모르면 스캔 버튼을 띄운다.** 바코드로 식별되는 품목(웨이퍼·타겟·캐니스터)에 대해, 작업(출고·불출·측정)이나 조회(그 바코드/품목의 정보·상태·재고 확인)를 하려는데, 사용자가 아직 어떤 개체(바코드)인지 밝히지 않았다면, 답변 안에 <<SCAN>> 이라고 출력한다. 그러면 사용자 화면에 카메라/갤러리 버튼이 떠서 바코드를 스캔할 수 있다. 이때 짧은 안내 문구도 함께 쓴다(예: "바코드를 스캔하거나, 바코드 번호 또는 품목명을 입력해 주세요"). 단, <<SCAN>>은 강요가 아니다 — 사용자는 바코드 번호(예: T-36)나 품목명을 글로 답해도 되고, 이미 바코드/품목을 말했거나 바코드가 없는 품목(가스·소모품 등)이면 <<SCAN>>을 쓰지 말고 평소대로 진행한다. <<SCAN>>은 한 번만, 바코드가 필요한 시점에만 출력한다.
 7. **바코드로 지정된 작업은 그 바코드의 정보만 쓴다.** 사용자가 바코드(예: T-43)로 특정 개체를 지정했으면, 그 바코드 하나에만 해당하는 정보(품목·입고건·위치 등)를 쓴다. 같은 품목명을 가진 다른 개체나 다른 입고건을 조회하거나 언급하지 마라. 바코드는 이미 정확히 한 개체를 가리키므로, "같은 품목의 다른 입고분이 있다"는 식의 안내는 불필요하고 혼란만 준다. 바코드가 지정되면 그 바코드의 입고건만 사용하고, 입고분 선택을 사용자에게 묻지도 마라.
 8. **장비 작업에서 사용자가 과거 시점을 말하면, 날짜를 직접 계산하거나 되묻지 말고 즉시 <<DATETIME>>을 출력한다.** 장비 작업(수리·벤트·클리닝)에서 "어제", "지난주", "3일 전", "6월 15일", "오후 3시에"처럼 과거의 특정 시점이나 발생 일시 지정 의도가 나오면, 날짜를 스스로 계산하지 말고 짧은 안내 한 줄과 함께 <<DATETIME>>을 출력하라(예: "발생 일시를 선택해 주세요 <<DATETIME>>"). 그러면 화면에 날짜·시간 선택기가 뜬다. 사용자가 고른 값(예: "2026-06-16 15:00")이 오면 다음 턴에서 occurredAt에 그대로 넣어 진행한다. 사용자가 시점을 전혀 말하지 않으면(그냥 "벤트했어") <<DATETIME>>도 occurredAt도 쓰지 말고 그대로 진행한다 — 시스템이 현재 시각(KST)으로 기록한다.
+9. **조회 라우팅을 절대 혼동하지 마라.** 재고·장비·품목·바코드·입출고의 현황/기록/이력/수량 조회는 반드시 제공된 도구(tool)를 호출해서 처리한다. <<READ>>는 근태·직원·연차·출장·결재 등 인사(HR) 정보 전용이며, 재고·장비 관련 질문에 <<READ>>를 출력하는 것은 오답이다.
 
 기타 규칙:
 - type이 id_ref인 필드는 해당 lookup 도구로 정확한 항목을 조회해 확인한다. 단, 사용자가 말한 이름이 명확히 한 항목과 일치하면 다시 되묻지 말고 그대로 쓴다(불필요한 재확인 금지).
@@ -61,14 +62,14 @@ function nowKstLabel(): string {
   const p = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     year: "numeric", month: "2-digit", day: "2-digit",
-    weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    weekday: "short",
   }).formatToParts(new Date());
   const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
-  return `${g("year")}-${g("month")}-${g("day")} (${g("weekday")}) ${g("hour")}:${g("minute")}`;
+  return `${g("year")}-${g("month")}-${g("day")} (${g("weekday")})`;
 }
 
 function buildSystemPrompt(schemas: SchemaOp[]): string {
-  const dateLine = `[현재 시각] 지금은 ${nowKstLabel()} (한국 시간/KST). "오늘"·"어제"·"지난주"·"N일 전" 같은 상대 날짜는 모두 이 KST 시각을 기준으로 판단하라.`;
+  const dateLine = `[오늘 날짜] 오늘은 ${nowKstLabel()} (KST). "오늘"·"어제"·"지난주"·"N일 전" 같은 상대 날짜는 모두 이 날짜를 기준으로 판단하라.`;
   const lines: string[] = [SYSTEM_PREAMBLE, "", dateLine, "", "[할 수 있는 작업]"];
   for (const op of schemas) {
     lines.push(`● ${op.label} (id=${op.id})`);
@@ -94,7 +95,7 @@ function buildSystemPrompt(schemas: SchemaOp[]): string {
     }
   }
   lines.push("");
-  lines.push("[조회 가능 항목] (사용자가 근태·직원 관련 정보를 물으면 아래 형식으로 조회를 요청한다)");
+  lines.push("[조회 가능 항목 — 인사(HR) 전용] (근태·직원·연차·출장·결재 정보를 물을 때만 아래 형식으로 조회를 요청한다. 재고·장비 조회에는 절대 사용하지 말고 도구를 호출한다)");
   lines.push("★ 본인 정보 조회는 절대 거부하지 마라. 사용자가 본인의 연차·근태·신청·결재 등 인사 정보를 물으면 '권한이 없다'·'접근할 수 없다'·'인사 시스템을 확인하라'고 답하지 마라. 너는 아래 항목으로 로그인한 사용자 본인의 정보를 안전하게 조회할 수 있다 — 반드시 해당 <<READ>>를 출력하라.");
   lines.push('- my_annual_leave : 본인 잔여 연차. 부르는 말: "내 연차", "남은 연차", "연차 며칠 남았어"');
   lines.push('- external_work : 전사 외근 신청 현황. 부르는 말: "외근 현황", "외근 누가 신청했어", "외근 목록"');
@@ -169,17 +170,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "messages_required" }, { status: 400 });
   }
 
+  const recentMessages = messages.length > 12 ? messages.slice(-12) : messages;
+
   // 작업 스키마 기반 시스템 프롬프트 주입 (best-effort: 실패하면 그대로 진행)
   // 이미 system 메시지가 있으면 중복 주입하지 않는다(맨 앞에만).
-  let outgoingMessages: unknown[] = messages;
-  const hasSystem = messages.some(
+  let outgoingMessages: unknown[] = recentMessages;
+  const hasSystem = recentMessages.some(
     (m) => typeof m === "object" && m !== null && (m as { role?: unknown }).role === "system"
   );
   if (!hasSystem) {
     const schemas = await fetchSchemas();
     if (schemas && schemas.length > 0) {
       const systemMessage = { role: "system", content: buildSystemPrompt(schemas) };
-      outgoingMessages = [systemMessage, ...messages];
+      outgoingMessages = [systemMessage, ...recentMessages];
     }
   }
 
