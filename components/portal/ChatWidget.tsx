@@ -369,6 +369,9 @@ function buildCard(
 // 대화 기록 로컬 저장 (사용자별 / 오늘 KST 날짜만)
 // ─────────────────────────────────────────────
 const CHAT_STORAGE_KEY = "vanam_chat_history";
+const CHAT_PENDING_KEY = "vanam_chat_pending";
+const POLL_INTERVAL_MS = 2000;
+const POLL_DEADLINE_MS = 240000; // 4분
 
 interface StoredChat {
   email: string;
@@ -406,6 +409,7 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseInputRef = useRef<string>(""); // 인식 시작 시점의 입력값
   const restoredRef = useRef(false); // 대화 복원 1회 실행 플래그
+  const pollSeqRef = useRef(0);
 
   // 음성 인식 지원 여부 체크
   useEffect(() => {
@@ -476,6 +480,19 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
     } catch {
       /* 파싱/접근 실패 → 무시 */
     }
+    // 진행 중이던 응답 대기 재개 (화면 이동으로 페이지가 새로 로드된 경우)
+    try {
+      const rawPending = window.localStorage.getItem(CHAT_PENDING_KEY);
+      if (rawPending) {
+        const pending = JSON.parse(rawPending) as { jobId?: string; email?: string; createdAt?: number };
+        if (pending.jobId && pending.email === userEmail && typeof pending.createdAt === "number" && Date.now() - pending.createdAt < POLL_DEADLINE_MS) {
+          setIsSending(true);
+          void pollForResult(pending.jobId, pending.createdAt);
+        } else {
+          window.localStorage.removeItem(CHAT_PENDING_KEY);
+        }
+      }
+    } catch { /* 무시 */ }
   }, [userEmail]);
 
   // 대화 저장: messages/displayMessages 변경 시. 로그인 상태에서만.
@@ -498,6 +515,8 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
   }, [messages, displayMessages, userEmail]);
 
   function handleClearChat() {
+    pollSeqRef.current += 1; // 진행 중 폴링 중단
+    clearPending();
     setMessages([]);
     setDisplayMessages([]);
     if (typeof window !== "undefined") {
@@ -598,6 +617,122 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
     );
   };
 
+  // 어시스턴트 응답(content) 처리: 작업 데이터(DATA) → 카드 / 스캔요청(SCAN) → 카메라·갤러리 버튼 / 그 외 → 텍스트
+  async function processAssistantContent(content: string) {
+    const assistantMsg: ChatMessage = { role: "assistant", content };
+    // 전송용 히스토리에는 항상 원본 content를 그대로 저장 (마커 포함)
+    setMessages((prev) => [...prev, assistantMsg]);
+
+    const queryReq = parseAllQueryRequests(content);
+    if (queryReq) {
+      if (queryReq.cleanedText) {
+        appendDisplay({ role: "assistant", text: queryReq.cleanedText, createdAt: Date.now() });
+      }
+      for (const q of queryReq.queries) {
+        try {
+          const qres = await fetch("/api/hr-read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ queryId: q.queryId, params: q.params }),
+          });
+          const qjson = await qres.json().catch(() => ({}));
+          const text =
+            qres.ok && qjson?.ok
+              ? formatQueryResult(q.queryId, qjson.data)
+              : "조회에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+          appendDisplay({ role: "assistant", text, createdAt: Date.now() });
+        } catch {
+          appendDisplay({ role: "assistant", text: "조회 중 오류가 발생했습니다.", isError: true, createdAt: Date.now() });
+        }
+      }
+      return;
+    }
+
+    const proposal = parseOperationData(content);
+    if (proposal) {
+      appendDisplay({
+        role: "assistant",
+        text: proposal.cleanedText,
+        proposal: proposal.data,
+        proposalStatus: "pending",
+        createdAt: Date.now(),
+      });
+    } else {
+      const scan = parseScanRequest(content);
+      const datetime = parseDatetimeRequest(content);
+      if (scan.isScan) {
+        appendDisplay({
+          role: "assistant",
+          text: scan.cleanedText || "바코드를 스캔하거나, 바코드 번호 또는 품목명을 입력해 주세요.",
+          scanRequest: true,
+          createdAt: Date.now(),
+        });
+      } else if (datetime.isDatetime) {
+        appendDisplay({
+          role: "assistant",
+          text: datetime.cleanedText || "발생 일시를 선택해 주세요.",
+          datetimeRequest: true,
+          createdAt: Date.now(),
+        });
+      } else {
+        appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
+      }
+    }
+  }
+
+  function savePending(jobId: string) {
+    try { window.localStorage.setItem(CHAT_PENDING_KEY, JSON.stringify({ jobId, email: userEmail, createdAt: Date.now() })); } catch {}
+  }
+  function clearPending() {
+    try { window.localStorage.removeItem(CHAT_PENDING_KEY); } catch {}
+  }
+
+  async function pollForResult(jobId: string, startedAt: number) {
+    const mySeq = pollSeqRef.current;
+    while (true) {
+      if (pollSeqRef.current !== mySeq) return; // 대화 지우기 등으로 취소됨
+      if (Date.now() - startedAt > POLL_DEADLINE_MS) {
+        clearPending();
+        appendDisplay({ role: "assistant", text: "응답 생성이 너무 오래 걸립니다. 잠시 후 다시 시도해 주세요.", isError: true, createdAt: Date.now() });
+        setIsSending(false);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/chat/result?jobId=${encodeURIComponent(jobId)}`, { cache: "no-store" });
+        if (res.status === 404) {
+          clearPending();
+          appendDisplay({ role: "assistant", text: "응답을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.", isError: true, createdAt: Date.now() });
+          setIsSending(false);
+          return;
+        }
+        if (res.ok) {
+          const data: { status?: string; content?: string | null; error?: string | null } = await res.json();
+          if (data.status === "done") {
+            clearPending();
+            await processAssistantContent(data.content ?? "");
+            setIsSending(false);
+            return;
+          }
+          if (data.status === "error") {
+            clearPending();
+            appendDisplay({
+              role: "assistant",
+              text: data.error === "timeout"
+                ? "응답 생성이 너무 오래 걸립니다. 잠시 후 다시 시도해 주세요."
+                : "응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.",
+              isError: true,
+              createdAt: Date.now(),
+            });
+            setIsSending(false);
+            return;
+          }
+          // pending → 계속 대기
+        }
+      } catch { /* 네트워크 일시 오류 → 재시도 */ }
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+  }
+
   // 실제 전송 로직: 주어진 text와 image(dataURL)로 /api/chat에 보낸다.
   // send()(입력창)와 자동 전송(바코드 스캔 등) 양쪽에서 호출한다.
   async function sendMessage(rawText: string, image: string | null) {
@@ -645,68 +780,13 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
         return;
       }
 
-      const data: { content?: string } = await res.json();
-      const content = data.content ?? "";
-      const assistantMsg: ChatMessage = { role: "assistant", content };
-      // 전송용 히스토리에는 항상 원본 content를 그대로 저장 (마커 포함)
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      // 화면 표시용: 작업 데이터(DATA) → 카드 / 스캔요청(SCAN) → 카메라·갤러리 버튼 / 그 외 → 텍스트
-      const queryReq = parseAllQueryRequests(content);
-      if (queryReq) {
-        if (queryReq.cleanedText) {
-          appendDisplay({ role: "assistant", text: queryReq.cleanedText, createdAt: Date.now() });
-        }
-        for (const q of queryReq.queries) {
-          try {
-            const qres = await fetch("/api/hr-read", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ queryId: q.queryId, params: q.params }),
-            });
-            const qjson = await qres.json().catch(() => ({}));
-            const text =
-              qres.ok && qjson?.ok
-                ? formatQueryResult(q.queryId, qjson.data)
-                : "조회에 실패했습니다. 잠시 후 다시 시도해 주세요.";
-            appendDisplay({ role: "assistant", text, createdAt: Date.now() });
-          } catch {
-            appendDisplay({ role: "assistant", text: "조회 중 오류가 발생했습니다.", isError: true, createdAt: Date.now() });
-          }
-        }
+      const data: { jobId?: string } = await res.json();
+      if (!data.jobId) {
+        appendDisplay({ role: "assistant", text: "응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.", isError: true, createdAt: Date.now() });
         return;
       }
-
-      const proposal = parseOperationData(content);
-      if (proposal) {
-        appendDisplay({
-          role: "assistant",
-          text: proposal.cleanedText,
-          proposal: proposal.data,
-          proposalStatus: "pending",
-          createdAt: Date.now(),
-        });
-      } else {
-        const scan = parseScanRequest(content);
-        const datetime = parseDatetimeRequest(content);
-        if (scan.isScan) {
-          appendDisplay({
-            role: "assistant",
-            text: scan.cleanedText || "바코드를 스캔하거나, 바코드 번호 또는 품목명을 입력해 주세요.",
-            scanRequest: true,
-            createdAt: Date.now(),
-          });
-        } else if (datetime.isDatetime) {
-          appendDisplay({
-            role: "assistant",
-            text: datetime.cleanedText || "발생 일시를 선택해 주세요.",
-            datetimeRequest: true,
-            createdAt: Date.now(),
-          });
-        } else {
-          appendDisplay({ role: "assistant", text: content || "(빈 응답)", createdAt: Date.now() });
-        }
-      }
+      savePending(data.jobId);
+      await pollForResult(data.jobId, Date.now());
     } catch {
       appendDisplay({
         role: "assistant",

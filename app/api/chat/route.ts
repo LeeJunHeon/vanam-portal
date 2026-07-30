@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { auth } from "@/auth";
+import { createJob, completeJob, failJob } from "@/lib/chat-jobs";
 
 export const runtime = "nodejs";        // LAN(192.168.x) 도달 위해 Node 런타임 필수
 export const dynamic = "force-dynamic";
@@ -182,8 +183,14 @@ export async function POST(req: Request) {
     }
   }
 
-  // 게이트웨이가 200 OK를 주면서도 content가 비어 오는 경우(gemma 간헐적 빈 응답)
-  // 같은 요청을 최대 3회까지 재시도한다. 마지막까지 비면 빈 content를 그대로 반환.
+  const jobId = createJob();
+  after(() => runGeneration(jobId, gatewayUrl, token, outgoingMessages));
+  return NextResponse.json({ jobId });
+}
+
+// 게이트웨이가 200 OK를 주면서도 content가 비어 오는 경우(gemma 간헐적 빈 응답)
+// 같은 요청을 최대 3회까지 재시도한다. 마지막까지 비면 빈 content를 그대로 반환.
+async function runGeneration(jobId: string, gatewayUrl: string, token: string, outgoingMessages: unknown[]) {
   const MAX_ATTEMPTS = 3;
   try {
     let content = "";
@@ -195,12 +202,13 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ model: "openclaw/default", messages: outgoingMessages, stream: false }),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(180000),
       });
 
       if (!upstream.ok) {
         const detail = (await upstream.text()).slice(0, 500);
-        return NextResponse.json({ error: "gateway_error", detail }, { status: 502 });
+        failJob(jobId, "gateway_error", detail);
+        return;
       }
 
       const data = await upstream.json();
@@ -213,7 +221,8 @@ export async function POST(req: Request) {
 
       // 정상 내용이면 즉시 반환. 빈 응답이면 다음 시도.
       if (!isEmptyResponse) {
-        return NextResponse.json({ content });
+        completeJob(jobId, content);
+        return;
       }
       // 빈 응답이면 짧게 쉬고 재시도 (마지막 시도면 루프 종료)
       if (attempt < MAX_ATTEMPTS) {
@@ -221,12 +230,12 @@ export async function POST(req: Request) {
       }
     }
     // 3회 모두 빈 응답 — 빈 content 반환(클라이언트가 안내 메시지 표시)
-    return NextResponse.json({ content });
+    completeJob(jobId, content);
   } catch (e: unknown) {
     const name =
       typeof e === "object" && e && (e as { name?: string }).name === "TimeoutError"
         ? "timeout"
         : "upstream_unreachable";
-    return NextResponse.json({ error: name }, { status: 504 });
+    failJob(jobId, name);
   }
 }
