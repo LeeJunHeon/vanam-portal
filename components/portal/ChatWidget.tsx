@@ -381,11 +381,11 @@ function todayKst(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 }
 
-export default function ChatWidget() {
+export default function ChatWidget({ embed = false }: { embed?: boolean }) {
   const { data: session } = useSession();
   const userEmail = session?.user?.email ?? null;
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embed);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
@@ -842,7 +842,7 @@ export default function ChatWidget() {
   return (
     <>
       {/* 플로팅 버튼 */}
-      {!open && (
+      {!open && !embed && (
         <button
           onClick={() => setOpen(true)}
           aria-label="챗봇 열기"
@@ -856,12 +856,20 @@ export default function ChatWidget() {
       {/* 패널 */}
       {open && (
         <div
-          className="fixed z-[60] bg-white border border-gray-200 rounded-2xl shadow-xl flex flex-col overflow-hidden right-4 left-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm"
-          style={{
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
-            height: "min(70vh, 600px)",
-            maxHeight: "calc(100vh - 80px)",
-          }}
+          className={
+            embed
+              ? "bg-white flex flex-col overflow-hidden w-full h-[100dvh]"
+              : "fixed z-[60] bg-white border border-gray-200 rounded-2xl shadow-xl flex flex-col overflow-hidden right-4 left-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm"
+          }
+          style={
+            embed
+              ? undefined
+              : {
+                  bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
+                  height: "min(70vh, 600px)",
+                  maxHeight: "calc(100vh - 80px)",
+                }
+          }
         >
           {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -886,7 +894,17 @@ export default function ChatWidget() {
                 </button>
               )}
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (embed) {
+                    // 부모(iframe 호스트)에 닫기 요청. 닫기 전 진행 중이던 음성/스캐너 정리.
+                    try { recognitionRef.current?.stop(); } catch {}
+                    setListening(false);
+                    setShowScanner(false);
+                    window.parent.postMessage("vanam-chat-close", window.location.origin);
+                  } else {
+                    setOpen(false);
+                  }
+                }}
                 aria-label="닫기"
                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
               >

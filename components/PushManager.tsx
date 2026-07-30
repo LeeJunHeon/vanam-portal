@@ -36,6 +36,8 @@ export default function PushManager() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
+    // 임베드 iframe 안에서는 실행하지 않음 (앱 화면 위에서 알림 권한 팝업이 뜨는 것 방지)
+    try { if (window.self !== window.top) return; } catch { return; }
     if (
       typeof window === "undefined" ||
       !("serviceWorker" in navigator) ||

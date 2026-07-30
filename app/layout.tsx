@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import PushManager from "@/components/PushManager";
-import ChatWidget from "@/components/portal/ChatWidget";
+import ChatWidgetGate from "@/components/portal/ChatWidgetGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default async function RootLayout({
       <body>
         <SessionProvider>
           {children}
-          {session?.user && <ChatWidget />}
+          {session?.user && <ChatWidgetGate />}
           <PushManager />
         </SessionProvider>
       </body>
