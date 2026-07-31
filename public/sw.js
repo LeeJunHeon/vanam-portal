@@ -9,8 +9,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "VanaM";
   const options = {
     body: data.body || "",
-    icon: data.icon || "/icon-v2.png",
-    badge: data.badge || "/icon-v2.png",
+    icon: data.icon || "/icon-v3-192.png",
+    badge: data.badge || "/icon-v3-192.png",
     tag: data.tag || undefined,
     renotify: data.tag ? true : false,
     data: { url: data.url || "/" },

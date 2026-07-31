@@ -15,8 +15,8 @@ export const metadata: Metadata = {
     title: "VanaM",
   },
   icons: {
-    icon: "/icon-v2.png",
-    apple: "/icon-v2.png",
+    icon: "/icon-v3-192.png",
+    apple: "/icon-v3-192.png",
   },
 };
 

@@ -43,7 +43,7 @@ export async function sendPushToEmployees(
     body: payload.body ?? "",
     url: payload.url ?? "/",
     tag: payload.tag,
-    icon: payload.icon ?? "/icon-v2.png",
+    icon: payload.icon ?? "/icon-v3-192.png",
   });
 
   const okEndpoints: string[] = [];

@@ -12,24 +12,25 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
-    "web-push": "^3.6.7",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "lucide-react": "^0.577.0",
     "next": "16.2.4",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "prisma": "^7.4.2",
-    "@types/web-push": "^3.6.4",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "prisma": "^7.4.2",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
