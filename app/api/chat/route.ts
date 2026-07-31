@@ -205,7 +205,7 @@ async function runGeneration(jobId: string, gatewayUrl: string, token: string, o
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ model: "openclaw/default", messages: outgoingMessages, stream: false }),
-        signal: AbortSignal.timeout(180000),
+        signal: AbortSignal.timeout(300000),
       });
 
       if (!upstream.ok) {

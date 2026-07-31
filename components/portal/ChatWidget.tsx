@@ -370,8 +370,10 @@ function buildCard(
 // ─────────────────────────────────────────────
 const CHAT_STORAGE_KEY = "vanam_chat_history";
 const CHAT_PENDING_KEY = "vanam_chat_pending";
+const CHAT_DRAFT_KEY = "vanam_chat_draft";
+const CHAT_OPEN_KEY = "vanam_chat_open";
 const POLL_INTERVAL_MS = 2000;
-const POLL_DEADLINE_MS = 240000; // 4분
+const POLL_DEADLINE_MS = 360000; // 6분
 
 interface StoredChat {
   email: string;
@@ -493,7 +495,27 @@ export default function ChatWidget({ embed = false }: { embed?: boolean }) {
         }
       }
     } catch { /* 무시 */ }
+    try { const d = window.sessionStorage.getItem(CHAT_DRAFT_KEY); if (d) setInput(d); } catch {}
   }, [userEmail]);
+
+  useEffect(() => {
+    try {
+      if (input) window.sessionStorage.setItem(CHAT_DRAFT_KEY, input);
+      else window.sessionStorage.removeItem(CHAT_DRAFT_KEY);
+    } catch {}
+  }, [input]);
+
+  useEffect(() => {
+    if (embed) return;
+    try { if (window.sessionStorage.getItem(CHAT_OPEN_KEY) === "1") setOpen(true); } catch {}
+  }, [embed]);
+  useEffect(() => {
+    if (embed) return;
+    try {
+      if (open) window.sessionStorage.setItem(CHAT_OPEN_KEY, "1");
+      else window.sessionStorage.removeItem(CHAT_OPEN_KEY);
+    } catch {}
+  }, [open, embed]);
 
   // 대화 저장: messages/displayMessages 변경 시. 로그인 상태에서만.
   useEffect(() => {
