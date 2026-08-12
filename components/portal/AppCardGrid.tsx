@@ -8,7 +8,7 @@ const INVENTORY_BASE = "/inventory";
 const EQUIPMENT_BASE = "/equipment";
 const HR_BASE = "/hr";
 const OFFICE_BASE = "/office";
-const PROCESS_BASE = "https://process.vanam.synology.me";
+const PROCESS_BASE = "/process";
 
 export default function AppCardGrid() {
   const [invStat1, setInvStat1] = useState<string | undefined>(undefined);
@@ -19,6 +19,7 @@ export default function AppCardGrid() {
   const [eqStatus, setEqStatus]   = useState<"online" | "offline" | "pending">("online");
   const [hrStatus, setHrStatus]   = useState<"online" | "offline" | "pending">("online");
   const [officeStatus, setOfficeStatus] = useState<"online" | "offline" | "pending">("online");
+  const [processStatus, setProcessStatus] = useState<"online" | "offline" | "pending">("online");
   const [officeStat1, setOfficeStat1] = useState<string | undefined>(undefined);
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
@@ -99,6 +100,7 @@ export default function AppCardGrid() {
           setEqStatus(d.containers["equipment-web-nextjs"]  === "running" ? "online" : "offline");
           setHrStatus(d.containers["hr-nextjs"] === "running" ? "online" : "offline");
           setOfficeStatus(d.containers["office-web-nextjs"] === "running" ? "online" : "offline");
+          setProcessStatus(d.containers["process-web-nextjs"] === "running" ? "online" : "offline");
         })
         .catch(() => {});
     };
@@ -162,8 +164,8 @@ export default function AppCardGrid() {
       iconBgColor: "#fffbeb",
       iconColor: "#d97706",
       title: "공정 관리",
-      description: "공정 레시피·런 기록·파라미터 추적",
-      status: "pending" as const,
+      description: "증착 요청 기판 사진 기록",
+      status: processStatus,
       href: PROCESS_BASE,
     },
   ];

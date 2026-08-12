@@ -127,12 +127,13 @@ export async function GET() {
 
     // 5. 컨테이너 헬스체크 (HTTP + TCP 병렬 실행)
     // 각 헬퍼가 내부에서 try-catch로 에러를 흡수하므로 Promise.all 안전
-    const [portal, inventory, equipment, hr, office, postgres] = await Promise.all([
+    const [portal, inventory, equipment, hr, office, process, postgres] = await Promise.all([
       checkHttp("http://localhost:3000"),              // 자기 자신
       checkHttp("http://inventory-web-nextjs:3000"),   // 재고관리
       checkHttp("http://equipment-web-nextjs:3003"),   // 장비관리 (내부 포트 3003)
       checkHttp("http://hr-nextjs:3000"),              // 근태관리
       checkHttp("http://office-web-nextjs:3000"),      // 경영지원
+      checkHttp("http://process-web-nextjs:3000"),     // 공정관리
       checkTcp("inventory-web-postgres", 5432),        // postgres
     ]);
 
@@ -142,6 +143,7 @@ export async function GET() {
       "equipment-web-nextjs": equipment,
       "hr-nextjs": hr,
       "office-web-nextjs": office,
+      "process-web-nextjs": process,
       "postgres": postgres,
     };
 
