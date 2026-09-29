@@ -269,6 +269,36 @@ function formatQueryResult(queryId: string, data: unknown): string {
   if (queryId === "my_approvals") {
     if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
     const aps = (Array.isArray(d.approvals) ? d.approvals : []) as Array<Record<string, unknown>>;
+    const counts =
+      d.counts && typeof d.counts === "object" ? (d.counts as Record<string, unknown>) : null;
+    if (counts) {
+      // 신버전 HR 응답: 근태·휴가 + 출장 참여 결재 + 내 출장 초대
+      if (!counts.total) return "결재할 건이 없습니다.";
+      const trips = (Array.isArray(d.tripApprovals) ? d.tripApprovals : []) as Array<Record<string, unknown>>;
+      const invites = (Array.isArray(d.tripInvites) ? d.tripInvites : []) as Array<Record<string, unknown>>;
+      const out = [
+        `결재 대기 ${counts.total}건 (근태 ${counts.attendance ?? 0} · 출장 ${counts.trip ?? 0} · 초대 ${counts.invites ?? 0})`,
+      ];
+      if (aps.length > 0) {
+        out.push("[근태·휴가]", ...aps.map((a) =>
+          `· ${a.requesterName ?? "?"}(${a.departmentName ?? "-"}) ${a.categoryName ?? ""} ${a.startDate}~${a.endDate}` +
+          (a.statusText ? ` — ${a.statusText}` : "")
+        ));
+      }
+      if (trips.length > 0) {
+        out.push("[출장 참여 결재]", ...trips.map((t) => {
+          const ps = (Array.isArray(t.participants) ? t.participants : []) as Array<Record<string, unknown>>;
+          return `· ${t.tripName ?? "?"} (${t.startDate}~${t.endDate}) — ${ps.map((p) => p.name ?? "?").join(", ")}`;
+        }));
+      }
+      if (invites.length > 0) {
+        out.push("[출장 초대 응답 대기]", ...invites.map((t) =>
+          `· ${t.tripName ?? "?"} (${t.startDate}~${t.endDate})`
+        ));
+      }
+      return out.join("\n");
+    }
+    // 구버전 HR 응답(counts 없음): 근태 결재만
     if (aps.length === 0) return "결재할 건이 없습니다.";
     return `내가 결재할 건 (${aps.length}건):\n` + aps.map((a) =>
       `· ${a.requesterName ?? "?"}(${a.departmentName ?? "-"}) ${a.categoryName ?? ""} ${a.startDate}~${a.endDate}`
