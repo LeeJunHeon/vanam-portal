@@ -226,7 +226,19 @@ function formatQueryResult(queryId: string, data: unknown): string {
     if (d.mapped === false) {
       return "연차 정보가 등록되어 있지 않습니다. 관리자에게 직원 등록을 요청하세요.";
     }
-    return `${d.year}년 잔여 연차: ${d.remaining}일 (부여 ${d.granted} / 사용 ${d.used})`;
+    let out = `${d.year}년 잔여 연차: ${d.remaining}일 (부여 ${d.granted} / 사용 ${d.used})`;
+    // 신버전 HR 응답: 결재 대기·신청 가능 일수 (없으면 기존 문구)
+    if (typeof d.pending === "number" && d.pending > 0) {
+      const avail =
+        typeof d.available === "number"
+          ? d.available
+          : typeof d.remaining === "number"
+            ? d.remaining - d.pending
+            : null;
+      out += ` · 결재 대기 ${d.pending}일`;
+      if (avail !== null) out += ` · 신청 가능 ${avail}일`;
+    }
+    return out;
   }
   if (queryId === "my_attendance") {
     if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
@@ -248,12 +260,12 @@ function formatQueryResult(queryId: string, data: unknown): string {
     const reqs = (Array.isArray(d.requests) ? d.requests : []) as Array<Record<string, unknown>>;
     if (reqs.length === 0) return "신청 내역이 없습니다.";
     return "내 신청 내역:\n" + reqs.map((r) =>
-      `· ${r.categoryName ?? "?"} ${r.startDate}~${r.endDate} [${r.status}]`
+      `· ${r.categoryName ?? "?"} ${r.startDate}~${r.endDate} [${r.statusLabel ?? r.status}]`
     ).join("\n");
   }
   if (queryId === "my_stats") {
     if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
-    return `${d.month} 내 근태 통계:\n· 출근 ${d.attended}일\n· 휴가 ${d.leaveDays}일\n· 신청 대기 ${d.pending}건\n· 승인됨 ${d.completed}건`;
+    return `${d.month} 내 근태 통계:\n· 출근 ${d.attended}일\n· 연차 사용 ${d.leaveDays}일\n· 신청 대기 ${d.pending}건\n· 신청 완료 ${d.completed}건`;
   }
   if (queryId === "my_presence") {
     if (d.mapped === false) return "근태 정보가 등록되어 있지 않습니다.";
@@ -310,7 +322,28 @@ function formatQueryResult(queryId: string, data: unknown): string {
     const lateL = (Array.isArray(d.lateList) ? d.lateList : []) as Array<Record<string, unknown>>;
     const absentL = (Array.isArray(d.absentList) ? d.absentList : []) as Array<Record<string, unknown>>;
     const leaveL = (Array.isArray(d.leaveList) ? d.leaveList : []) as Array<Record<string, unknown>>;
-    let out = `${d.date} ${scopeLabel} 출근 현황 (총 ${d.total}명):\n· 출근 ${d.present} · 지각 ${d.late} · 조퇴 ${d.earlyLeave} · 휴가/외근 ${d.leave} · 결근 ${d.absent}`;
+    const header = `${d.date} ${scopeLabel} 출근 현황 (총 ${d.total}명):`;
+    if (d.work !== undefined) {
+      // 신버전 HR 응답: 웹 근태 현황과 같은 분류
+      const earlyL = (Array.isArray(d.earlyLeaveList) ? d.earlyLeaveList : []) as Array<Record<string, unknown>>;
+      const workL = (Array.isArray(d.workList) ? d.workList : []) as Array<Record<string, unknown>>;
+      const withDetail = (a: Record<string, unknown>, ...keys: string[]) => {
+        const v = keys.map((k) => a[k]).find((x) => x !== undefined && x !== null && x !== "");
+        return `${a.name ?? "?"}${v !== undefined ? `(${v})` : ""}`;
+      };
+      const out = [
+        header,
+        `· 출근 ${d.present} (지각 ${d.late} · 조퇴 ${d.earlyLeave}) · 휴가 ${d.leave} · 출장·외근·재택 ${d.work} · 결근 ${d.absent} · 미출근 ${d.pending ?? 0}`,
+      ];
+      if (lateL.length > 0) out.push(`[지각] ` + lateL.map((a) => withDetail(a, "checkIn")).join(", "));
+      if (earlyL.length > 0) out.push(`[조퇴] ` + earlyL.map((a) => withDetail(a, "checkOut", "departmentName")).join(", "));
+      if (absentL.length > 0) out.push(`[결근] ` + absentL.map((a) => withDetail(a, "departmentName")).join(", "));
+      if (leaveL.length > 0) out.push(`[휴가] ` + leaveL.map((a) => withDetail(a, "categoryName")).join(", "));
+      if (workL.length > 0) out.push(`[출장·외근·재택] ` + workL.map((a) => withDetail(a, "categoryName")).join(", "));
+      return out.join("\n");
+    }
+    // 구버전 HR 응답(work 없음)
+    let out = `${header}\n· 출근 ${d.present} · 지각 ${d.late} · 조퇴 ${d.earlyLeave} · 휴가/외근 ${d.leave} · 결근 ${d.absent}`;
     if (typeof d.pending === "number" && d.pending > 0) out += ` · 미출근 ${d.pending}`;
     if (lateL.length > 0) {
       out += `\n[지각] ` + lateL.map((a) => `${a.name ?? "?"}${a.checkIn ? `(${a.checkIn})` : ""}`).join(", ");
