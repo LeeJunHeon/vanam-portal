@@ -131,7 +131,7 @@ export async function GET() {
       checkHttp("http://localhost:3000"),              // 자기 자신
       checkHttp("http://inventory-web-nextjs:3000"),   // 재고관리
       checkHttp("http://equipment-web-nextjs:3003"),   // 장비관리 (내부 포트 3003)
-      checkHttp("http://hr-nextjs:3000"),              // 근태관리
+      checkHttp("http://hr-nextjs:3000"),              // 인사관리
       checkHttp("http://office-web-nextjs:3000"),      // 경영지원
       checkHttp("http://process-web-nextjs:3000"),     // 공정관리
       checkTcp("inventory-web-postgres", 5432),        // postgres
