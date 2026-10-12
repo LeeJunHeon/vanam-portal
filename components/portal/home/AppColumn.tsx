@@ -70,7 +70,7 @@ function sortableStyle(
     zIndex: s.isDragging ? 10 : undefined,
     position: "relative",
     textDecoration: "none",
-    touchAction: editing ? "none" : undefined,
+    touchAction: editing ? "manipulation" : undefined,
   };
 }
 

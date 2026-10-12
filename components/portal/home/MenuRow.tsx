@@ -16,8 +16,8 @@ interface MenuRowProps {
   onToggleHidden: () => void;
 }
 
-const ROW_CLASS = "flex items-center gap-2.5 rounded-[10px] px-2 min-w-0";
-const ROW_STYLE: React.CSSProperties = { minHeight: "44px", backgroundColor: "#f9fafb", textDecoration: "none" };
+const ROW_CLASS = "flex items-center gap-2.5 rounded-[10px] px-2 min-w-0 bg-[#f9fafb]";
+const ROW_STYLE: React.CSSProperties = { minHeight: "44px", textDecoration: "none" };
 
 export default function MenuRow({ item, pinned, hidden, editing, onTogglePin, onToggleHidden }: MenuRowProps) {
   const app = PORTAL_APPS[item.app];
@@ -31,7 +31,22 @@ export default function MenuRow({ item, pinned, hidden, editing, onTogglePin, on
       >
         <MenuIcon name={item.icon} size={16} color={app.tileFg} />
       </div>
-      <span className="truncate flex-1 min-w-0" style={{ fontSize: "13px", color: "#1f2937", opacity: dim }} title={item.label}>
+      <span
+        className="flex-1 min-w-0"
+        style={{
+          fontSize: "13px",
+          color: "#1f2937",
+          opacity: dim,
+          lineHeight: 1.3,
+          wordBreak: "keep-all",
+          overflowWrap: "anywhere",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+        title={item.label}
+      >
         {item.label}
       </span>
       {item.adminOnly && (

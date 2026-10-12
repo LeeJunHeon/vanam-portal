@@ -81,7 +81,8 @@ export function SortablePinnedTile({ item, onRemove }: { item: MenuItem; onRemov
       <button
         type="button"
         onClick={onRemove}
-        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         aria-label={`${item.label} 즐겨찾기에서 빼기`}
         className="absolute flex items-center justify-center"
@@ -111,7 +112,7 @@ export function SortablePinnedTile({ item, onRemove }: { item: MenuItem; onRemov
         opacity: isDragging ? 0.6 : 1,
         zIndex: isDragging ? 10 : undefined,
         position: "relative",
-        touchAction: "none",
+        touchAction: "manipulation",
       }}
     >
       <TileFace item={item} badge={badge} />
