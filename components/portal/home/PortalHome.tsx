@@ -43,6 +43,7 @@ export default function PortalHome() {
   const [editing, setEditing] = useState(false);
   const [allOpen, setAllOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [clearTarget, setClearTarget] = useState<MenuItem | null>(null);
 
   // 경영지원 등 관리자 전용 앱은 admin·CEO 만
   const isVisible = (app: AppKey) => !PORTAL_APPS[app].adminOnly || summaries.isAdmin;
@@ -55,13 +56,14 @@ export default function PortalHome() {
 
   const pinnedSet = new Set(prefs.pinned);
   const hiddenSet = new Set(prefs.hidden);
+  const clearedSet = new Set(launcher.cleared);
   const pinnedItems = selectPinned(prefs.pinned, flat);
-  // 순서는 데이터를 받을 때 정해 두고, 보는 동안엔 즐겨찾기·숨김으로 빠지는 것만 반영
+  // 순서는 데이터를 받을 때 정해 두고, 보는 동안엔 즐겨찾기·숨김·기록 지우기로 빠지는 것만 반영
   const frequentItems = launcher.frequent
     .map((k) => byKey.get(k))
     .filter((m): m is MenuItem => m !== undefined)
     .slice(0, FREQUENT_MAX)
-    .filter((m) => !pinnedSet.has(m.key) && !hiddenSet.has(m.key));
+    .filter((m) => !pinnedSet.has(m.key) && !hiddenSet.has(m.key) && !clearedSet.has(m.key));
   const groups = groupAllMenus(visibleCatalog, order);
 
   const handleAddPin = (key: string) => {
@@ -92,6 +94,13 @@ export default function PortalHome() {
     launcher.flush();
     setEditing(false);
   };
+  const doClearUsage = async () => {
+    const target = clearTarget;
+    setClearTarget(null);
+    if (!target) return;
+    const ok = await launcher.clearUsage(target.key);
+    showToast(ok ? "사용 기록을 지웠습니다." : "지우지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  };
   const doReset = () => {
     setConfirmReset(false);
     updatePrefs(() => ({ ...EMPTY_PREFS }), { rerank: true, immediate: true });
@@ -120,7 +129,13 @@ export default function PortalHome() {
               onRemove={(key) => updatePrefs((p) => removePin(p, key))}
               onMove={handleMovePin}
             />
-            <FrequentSection items={frequentItems} ready={launcher.ready} editing={editing} onAdd={handleAddPin} />
+            <FrequentSection
+              items={frequentItems}
+              ready={launcher.ready}
+              editing={editing}
+              onAdd={handleAddPin}
+              onClear={setClearTarget}
+            />
           </div>
 
           <AllMenusSection
@@ -151,6 +166,15 @@ export default function PortalHome() {
           confirmLabel="초기화"
           onCancel={() => setConfirmReset(false)}
           onConfirm={doReset}
+        />
+      )}
+      {clearTarget && (
+        <ConfirmModal
+          title="사용 기록 지우기"
+          message={`'${clearTarget.label}' 사용 기록을 지웁니다. 자주 쓰는 메뉴에서 빠지고, 다시 사용하면 새로 쌓입니다.`}
+          confirmLabel="지우기"
+          onCancel={() => setClearTarget(null)}
+          onConfirm={() => void doClearUsage()}
         />
       )}
       <Toast message={toast} />

@@ -9,11 +9,13 @@ export default function FrequentSection({
   ready,
   editing,
   onAdd,
+  onClear,
 }: {
   items: MenuItem[];
   ready: boolean;
   editing: boolean;
   onAdd: (key: string) => void;
+  onClear: (item: MenuItem) => void;
 }) {
   return (
     <section aria-labelledby="launcher-freq-title">
@@ -36,7 +38,7 @@ export default function FrequentSection({
           {items.map((m, i) => {
             const cls = i >= 8 ? "hidden sm:flex" : "";
             return editing ? (
-              <AddTile key={m.key} item={m} onAdd={() => onAdd(m.key)} className={cls} />
+              <AddTile key={m.key} item={m} onAdd={() => onAdd(m.key)} onClear={() => onClear(m)} className={cls} />
             ) : (
               <LinkTile key={m.key} item={m} className={cls} />
             );

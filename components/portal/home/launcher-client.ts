@@ -96,6 +96,17 @@ export function sendUsage(item: Pick<MenuItem, "app" | "page" | "id">): void {
   }).catch(() => {});
 }
 
+/** 한 메뉴의 본인 사용 기록 지우기. 성공하면 true. */
+export function deleteUsage(key: string): Promise<boolean> {
+  return fetch("/api/launcher/usage", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  })
+    .then((r) => r.ok)
+    .catch(() => false);
+}
+
 export function putPrefs(prefs: LauncherPrefs, keepalive = false): Promise<boolean> {
   return fetch("/api/launcher/prefs", {
     method: "PUT",

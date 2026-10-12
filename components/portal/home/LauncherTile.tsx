@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Minus, Plus } from "lucide-react";
+import { Eraser, GripVertical, Minus, Plus } from "lucide-react";
 import { type MenuItem, menuHref } from "@/lib/launcher";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import MenuIcon from "./MenuIcon";
@@ -120,8 +120,21 @@ export function SortablePinnedTile({ item, onRemove }: { item: MenuItem; onRemov
   );
 }
 
-/** 편집 중 자주 쓰는 메뉴 타일: 누르면 즐겨찾기에 추가 */
-export function AddTile({ item, onAdd, className = "" }: { item: MenuItem; onAdd: () => void; className?: string }) {
+/**
+ * 편집 중 자주 쓰는 메뉴 타일: 누르면 즐겨찾기에 추가, 왼쪽 위 버튼은 사용 기록 지우기.
+ * 두 버튼은 형제 요소(버튼 안에 버튼 없음)라 기록 지우기를 눌러도 즐겨찾기 추가가 일어나지 않는다.
+ */
+export function AddTile({
+  item,
+  onAdd,
+  onClear,
+  className = "",
+}: {
+  item: MenuItem;
+  onAdd: () => void;
+  onClear: () => void;
+  className?: string;
+}) {
   const badge = (
     <span
       className="absolute flex items-center justify-center rounded-full"
@@ -132,14 +145,32 @@ export function AddTile({ item, onAdd, className = "" }: { item: MenuItem; onAdd
     </span>
   );
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      aria-label={`${item.label} 즐겨찾기에 추가`}
-      className={`${TILE_CLASS} hover:bg-gray-50 transition-colors ${className}`}
-    >
-      <TileFace item={item} badge={badge} />
-    </button>
+    <div className={`relative flex flex-col min-w-0 ${className}`}>
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={`${item.label} 즐겨찾기에 추가`}
+        className={`${TILE_CLASS} w-full hover:bg-gray-50 transition-colors`}
+      >
+        <TileFace item={item} badge={badge} />
+      </button>
+      {/* 아이콘 박스(가운데 56px, 위 8px) 왼쪽 위 — 즐겨찾기 타일 빼기 버튼과 같은 32px 영역·20px 원 */}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`${item.label} 사용 기록 지우기`}
+        title="사용 기록 지우기"
+        className="absolute flex items-center justify-center"
+        style={{ width: "32px", height: "32px", top: "-4px", left: "calc(50% - 40px)" }}
+      >
+        <span
+          className="flex items-center justify-center rounded-full"
+          style={{ width: "20px", height: "20px", backgroundColor: "#6b7280" }}
+        >
+          <Eraser size={12} color="#ffffff" />
+        </span>
+      </button>
+    </div>
   );
 }
 

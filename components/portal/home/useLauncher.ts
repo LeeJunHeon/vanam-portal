@@ -6,7 +6,7 @@ import {
   cleanPrefs, flattenCatalog, normalizeAppOrder, selectFrequent,
 } from "@/lib/launcher";
 import {
-  type LauncherSnapshot, fetchCatalog, fetchLauncher, putPrefs, readCache, writeCache,
+  type LauncherSnapshot, deleteUsage, fetchCatalog, fetchLauncher, putPrefs, readCache, writeCache,
 } from "./launcher-client";
 
 const SAVE_DELAY = 500;
@@ -15,6 +15,7 @@ interface LauncherState extends LauncherSnapshot {
   ready: boolean;      // 캐시나 서버 데이터로 그릴 수 있음 (아니면 스켈레톤)
   synced: boolean;     // 서버 배치를 받았음 (편집 가능)
   frequent: string[];  // 자주 쓰는 메뉴 순서 — 데이터를 받을 때 한 번 정한다
+  cleared: string[];   // 보는 동안 사용 기록을 지운 메뉴 (상위 12개를 자른 뒤 뺀다 — 다른 항목이 올라오지 않게)
 }
 
 // 자주 쓰는 메뉴 후보 순서 (보는 동안 다시 정렬하지 않도록 데이터 받을 때만 계산)
@@ -25,7 +26,7 @@ function rankFrequent(snap: LauncherSnapshot): string[] {
 
 export function useLauncher(onSaveError: () => void) {
   const [state, setState] = useState<LauncherState>({
-    catalog: {}, prefs: EMPTY_PREFS, scores: {}, ready: false, synced: false, frequent: [],
+    catalog: {}, prefs: EMPTY_PREFS, scores: {}, ready: false, synced: false, frequent: [], cleared: [],
   });
   const stateRef = useRef(state);
   const pendingRef = useRef<LauncherPrefs | null>(null);
@@ -50,7 +51,7 @@ export function useLauncher(onSaveError: () => void) {
     if (cached) {
       // sessionStorage 캐시는 마운트 뒤에만 읽을 수 있다(서버 렌더와 첫 화면을 맞추기 위해)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      apply({ ...cached, ready: true, synced: false, frequent: rankFrequent(cached) });
+      apply({ ...cached, ready: true, synced: false, frequent: rankFrequent(cached), cleared: [] });
     }
     Promise.all([fetchLauncher(), fetchCatalog()]).then(([server, catalog]) => {
       if (cancelled) return;
@@ -58,7 +59,13 @@ export function useLauncher(onSaveError: () => void) {
       const prefs = dirtyRef.current ? cur.prefs : server?.prefs ?? cur.prefs;
       const scores = server?.scores ?? cur.scores;
       const snap = { catalog, prefs, scores };
-      apply({ ...snap, ready: true, synced: cur.synced || server !== null, frequent: rankFrequent(snap) });
+      apply({
+        ...snap,
+        ready: true,
+        synced: cur.synced || server !== null,
+        frequent: rankFrequent(snap),
+        cleared: cur.cleared,
+      });
     });
     return () => {
       cancelled = true;
@@ -91,7 +98,10 @@ export function useLauncher(onSaveError: () => void) {
       if (prefs === cur.prefs) return;
       dirtyRef.current = true;
       const next = { ...cur, prefs };
-      if (opts?.rerank) next.frequent = rankFrequent(next);
+      if (opts?.rerank) {
+        next.frequent = rankFrequent(next);
+        next.cleared = [];
+      }
       apply(next);
       pendingRef.current = prefs;
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -114,5 +124,19 @@ export function useLauncher(onSaveError: () => void) {
     return () => window.removeEventListener("pagehide", onHide);
   }, []);
 
-  return { ...state, updatePrefs, flush };
+  /** 한 메뉴의 사용 기록 지우기. 성공하면 점수에서 지우고 자주 쓰는 메뉴에서 그 메뉴만 뺀다(다시 정렬 안 함). 캐시도 갱신. */
+  const clearUsage = useCallback(
+    async (key: string): Promise<boolean> => {
+      const ok = await deleteUsage(key);
+      if (!ok) return false;
+      const cur = stateRef.current;
+      const scores = { ...cur.scores };
+      delete scores[key];
+      apply({ ...cur, scores, cleared: [...cur.cleared, key] });
+      return true;
+    },
+    [apply],
+  );
+
+  return { ...state, updatePrefs, flush, clearUsage };
 }
