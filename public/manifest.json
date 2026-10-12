@@ -1,7 +1,7 @@
 {
   "name": "VanaM Platform",
   "short_name": "VanaM",
-  "description": "VanaM 통합 시스템 — 근태·재고·장비",
+  "description": "VanaM 통합 시스템 — 인사·재고·장비",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
