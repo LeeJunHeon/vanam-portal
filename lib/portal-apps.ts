@@ -57,7 +57,7 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
     name: "인사 관리",
     short: "인사",
     base: "/hr",
-    description: "WiFi 자동 출퇴근·휴가·결재·실적 관리",
+    description: "WiFi 자동 출퇴근·휴가·결재·성과 관리",
     icon: Calendar,
     iconBgColor: "#faf5ff",
     iconColor: "#9333ea",
