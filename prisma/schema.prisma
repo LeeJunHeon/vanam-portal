@@ -25,6 +25,32 @@ model PushSubscription {
   @@schema("portal")
 }
 
+// 런처 메뉴 사용 기록 (portal 스키마 — 사용자 × 메뉴키 × KST 날짜, 테이블은 prisma/sql/2026-10-02_launcher.sql)
+model LauncherUsageDaily {
+  userEmail  String   @map("user_email") @db.VarChar(255)
+  menuKey    String   @map("menu_key") @db.VarChar(100)
+  usedOn     DateTime @map("used_on") @db.Date
+  cnt        Int      @default(0)
+  lastUsedAt DateTime @default(now()) @map("last_used_at") @db.Timestamptz(6)
+
+  @@id([userEmail, menuKey, usedOn])
+  @@index([userEmail, usedOn], map: "idx_launcher_usage_daily_user_date")
+  @@map("launcher_usage_daily")
+  @@schema("portal")
+}
+
+// 런처 사용자별 배치 (즐겨찾기·숨김·앱 순서)
+model LauncherPrefs {
+  userEmail String   @id @map("user_email") @db.VarChar(255)
+  pinned    Json     @default("[]")
+  hidden    Json     @default("[]")
+  appOrder  Json     @default("[]") @map("app_order")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("launcher_prefs")
+  @@schema("portal")
+}
+
 // hr.employees 읽기 전용 매핑 (email → employeeId 해석용, 필요 필드만)
 model Employee {
   id    Int    @id
