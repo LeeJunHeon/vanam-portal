@@ -12,7 +12,7 @@ import { PORTAL_APPS } from "@/lib/portal-apps";
 import type { AppSummary } from "./useAppSummaries";
 import { DROP_BG, DROP_BORDER, EDIT_BORDER, useLauncherSensors } from "./dnd";
 
-const CHIP_WIDTH = 118;
+const CHIP_WIDTH = 140;
 const CHIP_GAP = 8;
 
 interface AppColumnProps {
@@ -264,7 +264,7 @@ function AppChip({ app, summary, editing }: { app: AppKey; summary: AppSummary; 
       />
     </>
   );
-  // 너비 고정 118px·높이 56px, 스크롤 줄에서 칩 단위로 멈춘다(snap-start)
+  // 너비 고정 140px·높이 56px, 스크롤 줄에서 칩 단위로 멈춘다(snap-start)
   const cls = "flex items-center gap-1.5 rounded-[12px] pl-1.5 pr-2 flex-shrink-0 snap-start";
   const style = { ...sortStyle, width: `${CHIP_WIDTH}px`, height: "56px" };
 
