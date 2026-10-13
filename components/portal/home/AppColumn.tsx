@@ -1,15 +1,19 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext, horizontalListSortingStrategy, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Wifi, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Wifi, WifiOff } from "lucide-react";
 import type { AppKey } from "@/lib/launcher";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import type { AppSummary } from "./useAppSummaries";
 import { DROP_BG, DROP_BORDER, EDIT_BORDER, useLauncherSensors } from "./dnd";
+
+const CHIP_WIDTH = 118;
+const CHIP_GAP = 8;
 
 interface AppColumnProps {
   order: AppKey[]; // 보이는 앱 순서
@@ -41,7 +45,7 @@ export default function AppColumn({ order, summaries, editing, onMove }: AppColu
       </div>
 
       {/* 모바일: 가로 스크롤 칩 */}
-      <div className="lg:hidden -mx-4 px-4 sm:-mx-5 sm:px-5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <MobileAppRow>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={horizontalListSortingStrategy}>
             <div className="flex gap-2 w-max pb-0.5">
@@ -51,8 +55,85 @@ export default function AppColumn({ order, summaries, editing, onMove }: AppColu
             </div>
           </SortableContext>
         </DndContext>
-      </div>
+      </MobileAppRow>
     </>
+  );
+}
+
+// lg 미만 가로 스크롤 줄 + 좌우 넘침 안내(그라데이션·화살표 버튼)
+// 표시 여부는 마운트 뒤 scroll·ResizeObserver 로만 계산한다(서버 렌더와 첫 화면은 둘 다 숨김)
+function MobileAppRow({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const left = el.scrollLeft > 4;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+      setEdge((cur) => (cur.left === left && cur.right === right ? cur : { left, right }));
+    };
+    el.addEventListener("scroll", update, { passive: true });
+    // observe 하면 처음 한 번 콜백이 불린다 — 칩 줄 너비(앱 수·순서 변경)도 같이 본다
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  const scrollByChips = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 2 * (CHIP_WIDTH + CHIP_GAP), behavior: "smooth" });
+  };
+
+  return (
+    <div className="lg:hidden relative">
+      <div
+        ref={scrollRef}
+        className="-mx-4 px-4 sm:-mx-5 sm:px-5 scroll-px-4 sm:scroll-px-5 overflow-x-auto snap-x snap-mandatory"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {children}
+      </div>
+      {edge.left && (
+        <>
+          <div
+            className="absolute inset-y-0 -left-4 sm:-left-5 w-10 pointer-events-none"
+            style={{ background: "linear-gradient(to left, transparent, #f0f2f5)" }}
+            aria-hidden
+          />
+          <ScrollHintButton side="left" onClick={() => scrollByChips(-1)} />
+        </>
+      )}
+      {edge.right && (
+        <>
+          <div
+            className="absolute inset-y-0 -right-4 sm:-right-5 w-10 pointer-events-none"
+            style={{ background: "linear-gradient(to right, transparent, #f0f2f5)" }}
+            aria-hidden
+          />
+          <ScrollHintButton side="right" onClick={() => scrollByChips(1)} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ScrollHintButton({ side, onClick }: { side: "left" | "right"; onClick: () => void }) {
+  const Icon = side === "left" ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={side === "left" ? "앱 이전 보기" : "앱 더 보기"}
+      className={`absolute top-1/2 -translate-y-1/2 ${side === "left" ? "-left-2" : "-right-2"} flex items-center justify-center rounded-full bg-white shadow-md`}
+      style={{ width: "28px", height: "28px", zIndex: 20 }}
+    >
+      <Icon size={16} color="#374151" />
+    </button>
   );
 }
 
@@ -166,14 +247,16 @@ function AppChip({ app, summary, editing }: { app: AppKey; summary: AppSummary; 
 
   const body = (
     <>
-      {editing && <GripVertical size={13} className="flex-shrink-0" style={{ color: "#94a3b8" }} aria-hidden />}
+      {editing && <GripVertical size={12} className="flex-shrink-0 -mr-0.5" style={{ color: "#94a3b8" }} aria-hidden />}
       <div
         className="flex items-center justify-center rounded-lg flex-shrink-0"
-        style={{ width: "30px", height: "30px", backgroundColor: meta.iconBgColor }}
+        style={{ width: "32px", height: "32px", backgroundColor: meta.iconBgColor }}
       >
-        <Icon size={15} color={meta.iconColor} strokeWidth={1.8} />
+        <Icon size={16} color={meta.iconColor} strokeWidth={1.8} />
       </div>
-      <span className="font-bold text-gray-900 whitespace-nowrap" style={{ fontSize: "13px" }}>{meta.name}</span>
+      <span className="font-bold text-gray-900 whitespace-nowrap truncate flex-1 min-w-0" style={{ fontSize: "13px" }} title={meta.name}>
+        {meta.name}
+      </span>
       <span
         className="rounded-full flex-shrink-0"
         style={{ width: "7px", height: "7px", backgroundColor: online ? "#22c55e" : "#dc2626" }}
@@ -181,8 +264,9 @@ function AppChip({ app, summary, editing }: { app: AppKey; summary: AppSummary; 
       />
     </>
   );
-  const cls = "flex items-center gap-2 rounded-[12px] pl-1.5 pr-3 flex-shrink-0";
-  const style = { ...sortStyle, height: "44px" };
+  // 너비 고정 118px·높이 56px, 스크롤 줄에서 칩 단위로 멈춘다(snap-start)
+  const cls = "flex items-center gap-1.5 rounded-[12px] pl-1.5 pr-2 flex-shrink-0 snap-start";
+  const style = { ...sortStyle, width: `${CHIP_WIDTH}px`, height: "56px" };
 
   if (editing) {
     return (
