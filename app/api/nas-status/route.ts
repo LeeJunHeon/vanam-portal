@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { execSync } from "child_process";
 import fs from "fs";
 import net from "net";
@@ -70,6 +71,12 @@ function checkTcp(
 // 메인 핸들러
 // ─────────────────────────────────────────────
 export async function GET() {
+  // 앞단(proxy) 검사가 우회되는 경우 대비 — 로그인 사용자만
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
   try {
     // 1. CPU 사용률 (/proc/stat, 200ms 간격 2회)
     let cpuPercent = -1;

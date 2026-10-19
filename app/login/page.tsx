@@ -1,7 +1,24 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { LayoutGrid } from "lucide-react";
+
+// NextAuth 가 거부·오류 시 /login?error=... 로 돌려보낸다
+function LoginError() {
+  const error = useSearchParams().get("error");
+  if (!error) return null;
+  const message =
+    error === "AccessDenied"
+      ? "등록되지 않았거나 사용이 중지된 계정입니다. 관리자에게 문의하세요."
+      : "로그인 중 문제가 생겼습니다. 다시 시도해 주세요.";
+  return (
+    <p role="alert" className="text-sm text-center text-red-600 bg-red-50 rounded-xl px-3 py-2">
+      {message}
+    </p>
+  );
+}
 
 export default function LoginPage() {
   return (
@@ -21,6 +38,9 @@ export default function LoginPage() {
         <hr className="border-gray-100" />
 
         <div className="space-y-3">
+          <Suspense fallback={null}>
+            <LoginError />
+          </Suspense>
           <p className="text-sm text-center text-gray-500">Google 계정으로 로그인하세요</p>
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}

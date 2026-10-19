@@ -11,6 +11,7 @@ export const authConfig: NextAuthConfig = {
   ],
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   cookies: {
     sessionToken: {

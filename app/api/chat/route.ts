@@ -144,6 +144,19 @@ async function fetchSchemas(): Promise<SchemaOp[] | null> {
   return merged.length > 0 ? merged : null;
 }
 
+// role 이 user/assistant 인 메시지만 남긴다
+function filterClientMessages(messages: unknown[]): unknown[] {
+  return messages.filter((m) => {
+    const role = typeof m === "object" && m !== null ? (m as { role?: unknown }).role : undefined;
+    return role === "user" || role === "assistant";
+  });
+}
+
+// 서버 지시문을 맨 앞에 붙인다 (지시문이 없으면 그대로)
+function withSystemPrompt(messages: unknown[], systemPrompt: string | null): unknown[] {
+  return systemPrompt ? [{ role: "system", content: systemPrompt }, ...messages] : messages;
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   const email = session?.user?.email;
@@ -170,21 +183,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "messages_required" }, { status: 400 });
   }
 
-  const recentMessages = messages.length > 12 ? messages.slice(-12) : messages;
+  // 클라이언트 메시지는 user/assistant 만 받는다(system 등으로 서버 지시문을 바꿔치기하지 못하게).
+  const conversation = filterClientMessages(messages);
+  const recentMessages = conversation.length > 12 ? conversation.slice(-12) : conversation;
 
-  // 작업 스키마 기반 시스템 프롬프트 주입 (best-effort: 실패하면 그대로 진행)
-  // 이미 system 메시지가 있으면 중복 주입하지 않는다(맨 앞에만).
-  let outgoingMessages: unknown[] = recentMessages;
-  const hasSystem = recentMessages.some(
-    (m) => typeof m === "object" && m !== null && (m as { role?: unknown }).role === "system"
+  // 작업 스키마 기반 시스템 프롬프트를 항상 맨 앞에 주입 (best-effort: 실패하면 지시문 없이 진행)
+  const schemas = await fetchSchemas();
+  const outgoingMessages = withSystemPrompt(
+    recentMessages,
+    schemas && schemas.length > 0 ? buildSystemPrompt(schemas) : null
   );
-  if (!hasSystem) {
-    const schemas = await fetchSchemas();
-    if (schemas && schemas.length > 0) {
-      const systemMessage = { role: "system", content: buildSystemPrompt(schemas) };
-      outgoingMessages = [systemMessage, ...recentMessages];
-    }
-  }
 
   const jobId = createJob();
   after(() => runGeneration(jobId, gatewayUrl, token, outgoingMessages));

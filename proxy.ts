@@ -14,11 +14,6 @@ export default auth((req: NextRequest & { auth: any }) => {
     return NextResponse.next();
   }
 
-  // /api/nas-status 는 내부 시스템 API — 인증 없이 허용
-  if (pathname.startsWith("/api/nas-status")) {
-    return NextResponse.next();
-  }
-
   // /login 은 항상 허용 (포털 자체 로그인 페이지)
   if (pathname.startsWith("/login")) {
     return NextResponse.next();
@@ -29,14 +24,20 @@ export default auth((req: NextRequest & { auth: any }) => {
     return NextResponse.next();
   }
 
+  const isApi = pathname.startsWith("/api/");
+
   // PWA 정적 자산(manifest.json, sw.js, 아이콘)은 인증 없이 통과
   // (브라우저가 자격증명 없이 요청하므로 인증 redirect가 끼면 PWA가 깨짐)
-  if (/\.(?:json|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/.test(pathname)) {
+  // API 경로는 확장자로 끝나더라도 예외가 되지 않게 제외한다.
+  if (!isApi && /\.(?:json|js|png|jpg|jpeg|gif|svg|ico|webmanifest)$/.test(pathname)) {
     return NextResponse.next();
   }
 
-  // 미인증 시 포털 로그인으로 리다이렉트
+  // 미인증 시: API 는 401 JSON, 페이지는 포털 로그인으로 리다이렉트
   if (!req.auth?.user) {
+    if (isApi) {
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
