@@ -20,6 +20,7 @@ services:
       PUSH_INTERNAL_TOKEN: ${PUSH_INTERNAL_TOKEN}
       OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      TRANSLATOR_HEALTH_URL: ${TRANSLATOR_HEALTH_URL:-http://192.168.0.83:8790/translator/healthz}
     networks:
       - internal
       - vanam-db-net

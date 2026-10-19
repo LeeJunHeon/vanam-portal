@@ -1,10 +1,10 @@
 // 포털 첫 화면 런처 — 순수 계산 (React·DB 없음, 서버 API 와 화면이 같이 쓴다)
 // 메뉴키: `${app}:${page}` (장비 상세처럼 id 가 있으면 `${app}:${page}:${id}`)
 
-export const APP_KEYS = ["inventory", "equipment", "hr", "office", "process"] as const;
+export const APP_KEYS = ["inventory", "equipment", "hr", "office", "process", "translator"] as const;
 export type AppKey = (typeof APP_KEYS)[number];
 
-export const MENU_KEY_RE = /^(inventory|equipment|hr|office|process):[A-Za-z0-9_-]{1,64}(:[0-9]{1,9})?$/;
+export const MENU_KEY_RE = /^(inventory|equipment|hr|office|process|translator):[A-Za-z0-9_-]{1,64}(:[0-9]{1,9})?$/;
 export const PAGE_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export const PINNED_MAX = 30;
@@ -101,7 +101,7 @@ export function prefsFromStored(pinned: unknown, hidden: unknown, appOrder: unkn
   };
 }
 
-/** 앱 순서: appOrder 중 유효한 키를 먼저(중복 제거), 빠진 앱은 기본 순서로 뒤에. 항상 5개. */
+/** 앱 순서: appOrder 중 유효한 키를 먼저(중복 제거), 빠진 앱은 기본 순서로 뒤에. 항상 APP_KEYS 개수만큼. */
 export function normalizeAppOrder(appOrder: readonly unknown[]): AppKey[] {
   const out = filterUnique([...appOrder], isAppKey, APP_KEYS.length) as AppKey[];
   for (const k of APP_KEYS) if (!out.includes(k)) out.push(k);

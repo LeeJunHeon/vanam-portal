@@ -59,7 +59,7 @@ export async function fetchLauncher(): Promise<{ prefs: LauncherPrefs; scores: R
   }
 }
 
-/** 5개 앱 portal-menus. 실패한 앱(꺼짐·미배포·401·JSON 아님)은 카탈로그에서 빠진다. */
+/** 앱별(APP_KEYS) portal-menus. 실패한 앱(꺼짐·미배포·401·JSON 아님)은 카탈로그에서 빠진다. */
 export async function fetchCatalog(): Promise<Catalog> {
   const results = await Promise.all(
     APP_KEYS.map(async (app): Promise<[AppKey, MenuItem[] | null]> => {

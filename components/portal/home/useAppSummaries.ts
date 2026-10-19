@@ -32,6 +32,7 @@ export function useAppSummaries(): AppSummaries {
   const [hrStatus, setHrStatus] = useState<AppRunStatus>("online");
   const [officeStatus, setOfficeStatus] = useState<AppRunStatus>("online");
   const [processStatus, setProcessStatus] = useState<AppRunStatus>("online");
+  const [translatorStatus, setTranslatorStatus] = useState<AppRunStatus>("online");
   const [officeStat1, setOfficeStat1] = useState<string | undefined>(undefined);
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
@@ -117,6 +118,7 @@ export function useAppSummaries(): AppSummaries {
           setHrStatus(st("hr"));
           setOfficeStatus(st("office"));
           setProcessStatus(st("process"));
+          setTranslatorStatus(st("translator"));
         })
         .catch(() => {});
     };
@@ -137,6 +139,7 @@ export function useAppSummaries(): AppSummaries {
       hr: { status: hrStatus, stat1: hrStat1, stat2: hrStat2, connState: hrConnState },
       office: { status: officeStatus, stat1: officeStat1 },
       process: { status: processStatus },
+      translator: { status: translatorStatus },
     },
   };
 }

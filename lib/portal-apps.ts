@@ -2,7 +2,7 @@
 import {
   type LucideIcon,
   Award, BarChart3, Briefcase, Building2, Calendar, CalendarCheck, CalendarDays, CheckSquare,
-  ClipboardList, Clock, Cpu, Droplet, FileText, Gauge, History, Home, IdCard, Layers,
+  ClipboardList, Clock, Cpu, Droplet, FileText, Gauge, History, Home, IdCard, Languages, Layers,
   LayoutDashboard, LayoutGrid, ListChecks, Package, Plane, QrCode, Search, Settings, Smartphone,
   Sparkles, Target, Users, Wind, Workflow, Wrench,
 } from "lucide-react";
@@ -94,6 +94,20 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
     adminOnly: false,
     container: "process-web-nextjs",
   },
+  translator: {
+    key: "translator",
+    name: "실시간 통역",
+    short: "통역",
+    base: "/translator",
+    description: "해외 미팅 한↔영 실시간 통역",
+    icon: Languages,
+    iconBgColor: "#ecfeff",
+    iconColor: "#0891b2",
+    tileBg: "#cffafe",
+    tileFg: "#0e7490",
+    adminOnly: false,
+    container: "translator",
+  },
 };
 
 export const DEFAULT_APP_ORDER: readonly AppKey[] = APP_KEYS;
@@ -103,7 +117,7 @@ const MENU_ICONS: Record<string, LucideIcon> = {
   Home, Package, BarChart3, Clock, QrCode, Search, Layers, Target, Droplet, Building2, Users,
   FileText, Wrench, Wind, Sparkles, Settings, Cpu, Calendar, Plane, CheckSquare, CalendarDays,
   CalendarCheck, Smartphone, Award, IdCard, LayoutDashboard, ListChecks, ClipboardList, History,
-  Gauge,
+  Gauge, Languages,
 };
 
 export function menuIcon(name: string): LucideIcon {
