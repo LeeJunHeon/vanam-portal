@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["portal", "hr", "public"]
+  schemas  = ["portal", "hr"]
 }
 
 // 구독 테이블 (portal 스키마 — 포털 소유)
@@ -58,16 +58,4 @@ model Employee {
 
   @@map("employees")
   @@schema("hr")
-}
-
-// public."user" 읽기 전용 매핑 (재고관리 앱 소유 — 로그인 허용 판정용, 필요 필드만)
-// 이 테이블은 포털에서 migrate / db push 하지 않는다.
-model AppUser {
-  id       Int     @id
-  email    String? @unique
-  name     String
-  isActive String  @map("is_active")
-
-  @@map("user")
-  @@schema("public")
 }
