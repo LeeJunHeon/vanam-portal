@@ -21,6 +21,13 @@ main() {
   if ! grep -qxF "$APP_DIR" <<<"$safe_dirs"; then
     git config --global --add safe.directory "$APP_DIR"
   fi
+  # NAS 에서 직접 고친 추적 파일이 있으면 멈춘다 (추적하지 않는 새 파일은 괜찮다)
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "배포 중단: NAS 에서 직접 고친 파일이 있습니다"
+    git status --short --untracked-files=no
+    echo "NAS 에서 직접 고친 내용은 GitHub 코드에 먼저 옮긴 뒤 git checkout -- <파일> 로 되돌리고 다시 배포하세요"
+    exit 1
+  fi
   git pull
 
   echo "[2/4] docker compose build $SERVICE"
