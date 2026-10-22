@@ -27,8 +27,23 @@ function MetricBar({ label, value, max, unit, color }: {
   );
 }
 
+interface CertData {
+  status: "ok" | "warn" | "error" | "unknown";
+  expiresAtKst: string | null;
+  daysLeft: number | null;
+}
+
 export default function ServerStatus() {
   const [data, setData] = useState<NasData | null>(null);
+  const [cert, setCert] = useState<CertData | null>(null);
+
+  // 인증서 상태는 마운트 때 한 번만 (서버가 6시간 캐시)
+  useEffect(() => {
+    fetch("/api/cert-status")
+      .then((r) => r.ok ? r.json() : null)
+      .then(setCert)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/nas-status")
@@ -78,6 +93,17 @@ export default function ServerStatus() {
           unit="GB"
           color="#22c55e"
         />
+        {cert && (
+          <div style={{
+            borderTop: "0.5px solid #f3f4f6", paddingTop: "8px", marginTop: "2px",
+            fontSize: "11px",
+            color: cert.status === "error" ? "#dc2626" : cert.status === "warn" ? "#ea580c" : "#9ca3af",
+          }}>
+            {cert.status === "unknown" || !cert.expiresAtKst
+              ? "HTTPS 인증서 · 확인 실패"
+              : `HTTPS 인증서 · ${cert.expiresAtKst.slice(0, 10)}까지 (${cert.daysLeft}일)`}
+          </div>
+        )}
       </div>
     </div>
   );

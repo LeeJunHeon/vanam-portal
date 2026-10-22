@@ -11,30 +11,43 @@ interface AlertItem {
 
 const EQUIPMENT_BASE = "/equipment";
 
-const CERT_EXPIRY = new Date("2026-06-29");
+function getJson(url: string, init?: RequestInit) {
+  return fetch(url, init).then((r) => {
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  });
+}
 
 export default function AlertPanel() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
 
   useEffect(() => {
-    const items: AlertItem[] = [];
+    let cancelled = false;
 
-    // HTTPS 인증서 만료 알림
-    const daysLeft = Math.floor((CERT_EXPIRY.getTime() - Date.now()) / 86400000);
-    if (daysLeft <= 90) {
-      items.push({
-        id: "cert",
-        type: daysLeft <= 14 ? "error" : "warn",
-        text: `HTTPS 인증서 만료 ${daysLeft}일 전`,
-        sub: `인프라 · 갱신 필요`,
-      });
-    }
+    // 인증서 상태와 장비 대시보드를 함께 조회 — 하나가 실패해도 나머지 알림은 표시
+    Promise.allSettled([
+      getJson("/api/cert-status"),
+      getJson(`${EQUIPMENT_BASE}/api/dashboard`, { credentials: "include" }),
+    ]).then(([certRes, equipRes]) => {
+      if (cancelled) return;
+      const items: AlertItem[] = [];
 
-    // 장비관리 PM 이슈 조회
-    fetch(`${EQUIPMENT_BASE}/api/dashboard`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (!d) return;
+      // HTTPS 인증서 알림 (서버가 실제 인증서를 읽어 판정, ok 면 알림 없음)
+      if (certRes.status === "fulfilled") {
+        const c = certRes.value;
+        if (c?.status === "warn" || c?.status === "error" || c?.status === "unknown") {
+          items.push({
+            id: "cert",
+            type: c.status === "error" ? "error" : "warn",
+            text: c.title,
+            sub: c.detail,
+          });
+        }
+      }
+
+      // 장비관리 PM 이슈
+      const d = equipRes.status === "fulfilled" ? equipRes.value : null;
+      if (d) {
         if (d.pmIssueCount > 0) {
           items.push({
             id: "pm",
@@ -51,9 +64,12 @@ export default function AlertPanel() {
             sub: `장비 관리 · 처리 필요`,
           });
         }
-        setAlerts([...items]);
-      })
-      .catch(() => setAlerts(items));
+      }
+
+      setAlerts(items);
+    });
+
+    return () => { cancelled = true; };
   }, []);
 
   const iconBg: Record<string, string> = { warn: "#fef9c3", error: "#fee2e2", info: "#e0f2fe" };

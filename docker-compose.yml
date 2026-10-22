@@ -30,6 +30,8 @@ services:
       HR_PORTAL_TOKEN: ${HR_PORTAL_TOKEN}
       HR_WRITE_TOKEN: ${HR_WRITE_TOKEN}
       TRANSLATOR_HEALTH_URL: ${TRANSLATOR_HEALTH_URL:-http://192.168.0.83:8790/translator/healthz}
+      CERT_CHECK_HOSTS: ${CERT_CHECK_HOSTS:-vanam.synology.me,192.168.0.210}
+      CERT_CHECK_SERVERNAME: ${CERT_CHECK_SERVERNAME:-vanam.synology.me}
       ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
     networks:
       - internal
