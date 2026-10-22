@@ -86,6 +86,8 @@ export function judgeCert(input: {
   const lifetimeDays = Math.round(lifetime / DAY_MS);
   const detail = `인프라 · 자동 갱신 확인 필요 · 만료 ${formatKst(notAfter)}`;
   const base = { daysLeft, lifetimeDays, detail };
+  // 1일 미만 남으면 "만료 0일 전" 대신 "오늘 만료"
+  const leftTitle = remaining < DAY_MS ? "HTTPS 인증서 오늘 만료" : `HTTPS 인증서 만료 ${daysLeft}일 전`;
 
   if (remaining <= 0 || authorizationError === "CERT_HAS_EXPIRED") {
     return { ...base, status: "error", title: "HTTPS 인증서 만료됨" };
@@ -94,14 +96,14 @@ export function judgeCert(input: {
     return { ...base, status: "error", title: "HTTPS 인증서 이름 불일치" };
   }
   if (remaining <= 7 * DAY_MS) {
-    return { ...base, status: "error", title: `HTTPS 인증서 만료 ${daysLeft}일 전` };
+    return { ...base, status: "error", title: leftTitle };
   }
   // 체인 신뢰 오류 등은 Node 신뢰 목록 차이일 수 있어 긴급으로 두지 않는다
   if (authorizationError) {
     return { ...base, status: "warn", title: `HTTPS 인증서 검증 경고 (${authorizationError})` };
   }
   if (remaining <= lifetime / 4) {
-    return { ...base, status: "warn", title: `HTTPS 인증서 만료 ${daysLeft}일 전` };
+    return { ...base, status: "warn", title: leftTitle };
   }
   return { ...base, status: "ok", title: "HTTPS 인증서 정상" };
 }

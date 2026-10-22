@@ -19,12 +19,15 @@ import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import { useAppSummaries } from "./useAppSummaries";
 import { useLauncher } from "./useLauncher";
+import { useNasStatus } from "./useNasStatus";
 
 const TOAST_MS = 2500;
 
 // 포털 첫 화면: 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그 · 오른쪽 서버 상태·알림
 export default function PortalHome() {
-  const summaries = useAppSummaries();
+  // 서버 상태는 여기서 한 번만 불러 서버 상태 카드와 앱 카드 뱃지가 같이 쓴다
+  const nas = useNasStatus();
+  const summaries = useAppSummaries(nas.data?.containers ?? null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((msg: string) => {
@@ -154,7 +157,7 @@ export default function PortalHome() {
         </main>
 
         <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
-          <ServerStatus />
+          <ServerStatus data={nas.data} stale={nas.stale} />
           <AlertPanel />
         </aside>
       </div>

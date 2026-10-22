@@ -5,7 +5,8 @@ import type { AppKey } from "@/lib/launcher";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 
 // 앱 카드 데이터 (이전 AppCardGrid 의 데이터 로직 그대로):
-// 역할(/hr/api/me + sessionStorage 캐시), 앱별 요약, /api/nas-status 30초 갱신, 근태 연결 상태
+// 역할(/hr/api/me + sessionStorage 캐시), 앱별 요약, 근태 연결 상태
+// 앱 운영 상태는 넘겨받은 containers(useNasStatus 결과)로 계산한다 — nas-status 는 여기서 부르지 않는다
 
 export type AppRunStatus = "online" | "offline";
 
@@ -22,17 +23,11 @@ export interface AppSummaries {
   apps: Record<AppKey, AppSummary>;
 }
 
-export function useAppSummaries(): AppSummaries {
+export function useAppSummaries(containers: Record<string, string> | null): AppSummaries {
   const [invStat1, setInvStat1] = useState<string | undefined>(undefined);
   const [invStat2, setInvStat2] = useState<string | undefined>(undefined);
   const [eqStat1, setEqStat1] = useState<string | undefined>(undefined);
   const [eqStat2, setEqStat2] = useState<string | undefined>(undefined);
-  const [invStatus, setInvStatus] = useState<AppRunStatus>("online");
-  const [eqStatus, setEqStatus] = useState<AppRunStatus>("online");
-  const [hrStatus, setHrStatus] = useState<AppRunStatus>("online");
-  const [officeStatus, setOfficeStatus] = useState<AppRunStatus>("online");
-  const [processStatus, setProcessStatus] = useState<AppRunStatus>("online");
-  const [translatorStatus, setTranslatorStatus] = useState<AppRunStatus>("online");
   const [officeStat1, setOfficeStat1] = useState<string | undefined>(undefined);
   const [hrStat1, setHrStat1] = useState<string | undefined>(undefined);
   const [hrStat2, setHrStat2] = useState<string | undefined>(undefined);
@@ -104,42 +99,22 @@ export function useAppSummaries(): AppSummaries {
         setOfficeStat1(`지재권 ${d.patents ?? 0} · 장비 ${d.assets ?? 0} · 인사 ${d.personalInfo ?? 0}`);
       })
       .catch(() => {});
-
-    // 컨테이너 상태 (nas-status) — 앱 카드 뱃지 반영
-    const fetchNasStatus = () => {
-      fetch("/api/nas-status")
-        .then((r) => r.ok ? r.json() : null)
-        .then((d) => {
-          if (!d?.containers) return;
-          const st = (app: AppKey): AppRunStatus =>
-            d.containers[PORTAL_APPS[app].container] === "running" ? "online" : "offline";
-          setInvStatus(st("inventory"));
-          setEqStatus(st("equipment"));
-          setHrStatus(st("hr"));
-          setOfficeStatus(st("office"));
-          setProcessStatus(st("process"));
-          setTranslatorStatus(st("translator"));
-        })
-        .catch(() => {});
-    };
-    fetchNasStatus();
-    const nasTimer = setInterval(fetchNasStatus, 30000);
-
-    return () => {
-      clearInterval(nasTimer);
-    };
   }, []);
+
+  // 컨테이너 상태 → 앱 카드 뱃지 (아직 못 받았으면 online 으로 둔다)
+  const st = (app: AppKey): AppRunStatus =>
+    !containers || containers[PORTAL_APPS[app].container] === "running" ? "online" : "offline";
 
   return {
     role,
     isAdmin: role === "admin" || role === "ceo",
     apps: {
-      inventory: { status: invStatus, stat1: invStat1, stat2: invStat2 },
-      equipment: { status: eqStatus, stat1: eqStat1, stat2: eqStat2 },
-      hr: { status: hrStatus, stat1: hrStat1, stat2: hrStat2, connState: hrConnState },
-      office: { status: officeStatus, stat1: officeStat1 },
-      process: { status: processStatus },
-      translator: { status: translatorStatus },
+      inventory: { status: st("inventory"), stat1: invStat1, stat2: invStat2 },
+      equipment: { status: st("equipment"), stat1: eqStat1, stat2: eqStat2 },
+      hr: { status: st("hr"), stat1: hrStat1, stat2: hrStat2, connState: hrConnState },
+      office: { status: st("office"), stat1: officeStat1 },
+      process: { status: st("process") },
+      translator: { status: st("translator") },
     },
   };
 }
