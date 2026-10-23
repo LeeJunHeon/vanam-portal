@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isValidPage, menuHref } from "@/lib/launcher";
 
 interface LogItem {
   id: string;
@@ -13,6 +14,17 @@ interface LogItem {
 
 const EQUIPMENT_BASE = "/equipment";
 const INVENTORY_BASE = "/inventory";
+
+/** 응답의 page 가 올바른 화면 키면 그 메뉴 화면, 아니면 앱 첫 화면 (즐겨찾기와 같은 ?page= 규칙) */
+function logHref(base: string, page: unknown): string {
+  return isValidPage(page) ? menuHref(base, { page }) : base;
+}
+
+/** 배열 응답에서 객체 항목만 (형식이 이상한 응답·항목으로 화면이 깨지지 않게) */
+function objectItems(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((d): d is Record<string, unknown> => !!d && typeof d === "object");
+}
 
 function timeAgo(isoStr: string): string {
   const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
@@ -29,14 +41,14 @@ export default function ActivityLog() {
   useEffect(() => {
     // 장비관리 + 재고관리 최근 이력 병렬 조회 후 병합·시간순 정렬
     Promise.allSettled([
-      fetch(`${EQUIPMENT_BASE}/api/logs?limit=10`, { credentials: "include" }).then((r) => r.ok ? r.json() : []),
+      fetch(`${EQUIPMENT_BASE}/api/portal-logs?limit=10`, { credentials: "include" }).then((r) => r.ok ? r.json() : []),
       fetch(`${INVENTORY_BASE}/api/portal-logs?limit=10`, { credentials: "include" }).then((r) => r.ok ? r.json() : []),
     ]).then(([eqRes, invRes]) => {
       const items: LogItem[] = [];
 
       // 장비관리 로그
-      if (eqRes.status === "fulfilled" && Array.isArray(eqRes.value)) {
-        for (const d of eqRes.value as { id: number; eventType: string; equipmentName: string; occurredAt: string }[]) {
+      if (eqRes.status === "fulfilled") {
+        for (const d of objectItems(eqRes.value) as { id: number; eventType: string; equipmentName: string; occurredAt: string; page?: unknown }[]) {
           items.push({
             id: `eq-${d.id}`,
             appName: "장비 관리",
@@ -46,21 +58,21 @@ export default function ActivityLog() {
             }`,
             occurredAt: d.occurredAt,
             color: d.eventType === "repair" ? "#ef4444" : "#22c55e",
-            href: EQUIPMENT_BASE,
+            href: logHref(EQUIPMENT_BASE, d.page),
           });
         }
       }
 
       // 재고관리 로그
-      if (invRes.status === "fulfilled" && Array.isArray(invRes.value)) {
-        for (const d of invRes.value as { id: number; tableLabel: string; actionLabel: string; userName: string; occurredAt: string }[]) {
+      if (invRes.status === "fulfilled") {
+        for (const d of objectItems(invRes.value) as { id: number; tableLabel: string; actionLabel: string; userName: string; occurredAt: string; page?: unknown }[]) {
           items.push({
             id: `inv-${d.id}`,
             appName: "재고 관리",
             message: `${d.tableLabel} · ${d.actionLabel} (${d.userName})`,
             occurredAt: d.occurredAt,
             color: "#3b82f6",
-            href: INVENTORY_BASE,
+            href: logHref(INVENTORY_BASE, d.page),
           });
         }
       }
