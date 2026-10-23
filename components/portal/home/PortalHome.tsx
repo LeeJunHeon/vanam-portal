@@ -158,7 +158,7 @@ export default function PortalHome() {
 
         <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
           <ServerStatus data={nas.data} stale={nas.stale} />
-          <AlertPanel />
+          <AlertPanel data={nas.data} stale={nas.stale} />
         </aside>
       </div>
 

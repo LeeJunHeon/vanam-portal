@@ -219,6 +219,17 @@ export function getUptimeDays(): number {
   }
 }
 
+/** 가동 시간(정수 초). 포털 알림의 재시작 감지용. 못 읽으면 -1 */
+export function getUptimeSec(): number {
+  try {
+    const upRaw = fs.readFileSync("/proc/uptime", "utf8");
+    const sec = Math.floor(parseFloat(upRaw.split(" ")[0]));
+    return Number.isFinite(sec) ? sec : -1;
+  } catch {
+    return -1;
+  }
+}
+
 // ─────────────────────────────────────────────
 // 컨테이너 헬스체크
 // ─────────────────────────────────────────────

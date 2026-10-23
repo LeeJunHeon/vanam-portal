@@ -18,6 +18,7 @@ export interface NasStatus {
   ram: { used: number; total: number };
   disk: { used: number; total: number };
   uptimeDays: number;
+  uptimeSec?: number; // 정수 초, 못 읽으면 -1 (구버전 서버 응답엔 없음)
   containers: Record<string, string>;
   containersCheckedAt: string;
 }

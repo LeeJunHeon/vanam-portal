@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getContainers, getCpu, getDisk, getRam, getUptimeDays } from "@/lib/nas-monitor";
+import { getContainers, getCpu, getDisk, getRam, getUptimeDays, getUptimeSec } from "@/lib/nas-monitor";
 
 export const runtime = "nodejs";        // /proc·statfs·TCP 체크 사용
 export const dynamic = "force-dynamic";
@@ -30,6 +30,7 @@ export async function GET() {
         ram: getRam(),
         disk,
         uptimeDays: getUptimeDays(),
+        uptimeSec: getUptimeSec(),          // 정수 초, 못 읽으면 -1
         containers: containers.containers,
         containersCheckedAt: new Date(containers.at).toISOString(),
       },
