@@ -115,6 +115,7 @@ export function useAppSummaries(containers: Record<string, string> | null): AppS
       office: { status: st("office"), stat1: officeStat1 },
       process: { status: st("process") },
       translator: { status: st("translator") },
+      assistant: { status: st("assistant") },
     },
   };
 }

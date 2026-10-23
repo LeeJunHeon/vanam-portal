@@ -108,6 +108,20 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
     adminOnly: false,
     container: "translator",
   },
+  assistant: {
+    key: "assistant",
+    name: "업무 비서",
+    short: "업무비서",
+    base: "/assistant",
+    description: "메일·채팅·일정에서 AI가 찾은 내 할 일",
+    icon: Sparkles,
+    iconBgColor: "#f0fdfa",
+    iconColor: "#14b8a6",
+    tileBg: "#ccfbf1",
+    tileFg: "#0f766e",
+    adminOnly: false,
+    container: "ai-assistant-web",
+  },
 };
 
 export const DEFAULT_APP_ORDER: readonly AppKey[] = APP_KEYS;
