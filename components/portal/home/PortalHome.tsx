@@ -11,7 +11,7 @@ import ActivityLog from "@/components/portal/ActivityLog";
 import ServerStatus from "@/components/portal/ServerStatus";
 import AlertPanel from "@/components/portal/AlertPanel";
 import { useToday } from "@/components/portal/today/TodayProvider";
-import { TodayMobileCard, TodayPanel } from "@/components/portal/today/TodayHome";
+import { TodayCard, TodayCompactCard } from "@/components/portal/today/TodayHome";
 import AppColumn from "./AppColumn";
 import FavoritesSection from "./FavoritesSection";
 import FrequentSection from "./FrequentSection";
@@ -25,8 +25,8 @@ import { useNasStatus } from "./useNasStatus";
 
 const TOAST_MS = 2500;
 
-// 포털 첫 화면: 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그 · 오른쪽 서버 상태·알림
-// 1600px 이상은 가운데와 서버 상태 사이에 업무 비서 '오늘' 패널(4단), 768px 미만은 맨 위에 '오늘' 카드
+// 포털 첫 화면(3단, 가운데 정렬): 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그
+// · 오른쪽 열(업무 비서 '오늘' → 알림 → 서버 상태, 세 카드 같은 폭). 1024px 미만은 '오늘'을 맨 위 카드로
 export default function PortalHome() {
   // 서버 상태는 여기서 한 번만 불러 서버 상태 카드와 앱 카드 뱃지가 같이 쓴다
   const nas = useNasStatus();
@@ -125,8 +125,8 @@ export default function PortalHome() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4 sm:px-5 max-w-[1360px] min-[1600px]:max-w-[1880px]">
-        <TodayMobileCard />
+      <div className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4 sm:px-5 max-w-[1420px]">
+        <TodayCompactCard />
 
         <aside className="lg:w-[220px] lg:flex-shrink-0 min-w-0" aria-label="앱">
           <AppColumn order={order} summaries={appSummaries} editing={editing} onMove={handleMoveApp} />
@@ -169,11 +169,10 @@ export default function PortalHome() {
           <ActivityLog />
         </main>
 
-        <TodayPanel />
-
-        <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
-          <ServerStatus data={nas.data} stale={nas.stale} />
+        <aside className="flex flex-col gap-4 lg:w-[310px] lg:flex-shrink-0 min-w-0">
+          <TodayCard />
           <AlertPanel data={nas.data} stale={nas.stale} />
+          <ServerStatus data={nas.data} stale={nas.stale} />
         </aside>
       </div>
 

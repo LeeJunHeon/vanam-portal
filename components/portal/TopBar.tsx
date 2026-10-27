@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/NotificationBell";
 import { TodayButton } from "@/components/portal/today/TodayProvider";
+import { clearTodayCache } from "@/components/portal/today/useAssistantToday";
 
 export default function TopBar() {
   const { data: session, status } = useSession();
@@ -97,7 +98,10 @@ export default function TopBar() {
                 취소
               </button>
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => {
+                  clearTodayCache(); // 저장해 둔 업무 비서 '오늘'을 다음 사용자에게 보이지 않게
+                  void signOut({ callbackUrl: "/login" });
+                }}
                 className="px-4 py-2 text-sm font-bold text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors"
               >
                 로그아웃

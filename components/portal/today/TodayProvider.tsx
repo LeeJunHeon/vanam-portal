@@ -6,14 +6,15 @@ import Toast from "@/components/portal/home/Toast";
 import { completeTask, type TodayData, type TodayTask, useAssistantToday } from "./useAssistantToday";
 import { type TaskActions, TodayBody, TodayHeader } from "./TodayView";
 
-// 업무 비서 '오늘' 공유 상태: 상단바 [오늘] 버튼·첫 화면 패널·모바일 카드·업무 비서 타일 요약이 같이 쓴다.
-// 서랍(768~1599px, 오른쪽 380px)과 전체 화면 시트(768px 미만)는 같은 대화 상자를 폭에 따라 다르게 그린다.
+// 업무 비서 '오늘' 공유 상태: 상단바 [오늘] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 비서 타일 요약이 같이 쓴다.
+// 1024px 미만에서만 [오늘] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
 
 const TOAST_MS = 2500;
-const WIDE_QUERY = "(min-width: 1600px)"; // 이 폭부터는 첫 화면 패널이 보여 서랍을 닫는다
+const WIDE_QUERY = "(min-width: 1024px)"; // 이 폭부터는 오른쪽 열에 '오늘'이 보여 시트를 닫는다
 
 interface TodayContextValue {
   data: TodayData | null;
+  loading: boolean; // 응답·저장분을 기다리는 중(자리표시)
   actions: TaskActions;
   openSheet: (opener?: HTMLElement | null) => void;
   sheetOpen: boolean;
@@ -27,7 +28,7 @@ export function useToday(): TodayContextValue | null {
 }
 
 export default function TodayProvider({ children }: { children: React.ReactNode }) {
-  const { data, reload, dropTask } = useAssistantToday();
+  const { data, loading, reload, dropTask } = useAssistantToday();
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,6 +37,10 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+  // 예전 접기 기능이 남긴 값 정리(접기 기능은 없앴다)
+  useEffect(() => {
+    try { localStorage.removeItem("portalTodayCollapsed"); } catch {}
   }, []);
 
   const onComplete = useCallback(async (task: TodayTask) => {
@@ -68,7 +73,7 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
   const actions: TaskActions = { pending, onComplete: (t) => void onComplete(t) };
 
   return (
-    <TodayContext.Provider value={{ data, actions, openSheet, sheetOpen }}>
+    <TodayContext.Provider value={{ data, loading, actions, openSheet, sheetOpen }}>
       {children}
       {sheetOpen && data && <TodaySheet data={data} actions={actions} onClose={closeSheet} returnTo={opener} />}
       <Toast message={toast} />
@@ -137,7 +142,7 @@ function TodaySheet({ data, actions, onClose, returnTo }: {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="absolute inset-0 md:left-auto md:w-[380px] bg-white flex flex-col shadow-2xl"
+        className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[560px] bg-white flex flex-col shadow-2xl"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="px-4 flex items-center flex-shrink-0" style={{ height: "56px", borderBottom: "0.5px solid #e5e7eb" }}>
@@ -167,7 +172,7 @@ function TodaySheet({ data, actions, onClose, returnTo }: {
   );
 }
 
-/** 상단바 [오늘 N] 버튼 — 1600px 이상에서는 첫 화면 패널이 보이므로 숨긴다 */
+/** 상단바 [오늘 N] 버튼 — 1024px 이상에서는 오른쪽 열에 '오늘'이 보이므로 숨긴다 */
 export function TodayButton() {
   const today = useToday();
   if (!today?.data) return null;
@@ -179,7 +184,7 @@ export function TodayButton() {
       aria-haspopup="dialog"
       aria-expanded={today.sheetOpen}
       aria-label={n > 0 ? `오늘 할 일 ${n}건 보기` : "오늘 보기"}
-      className="min-[1600px]:hidden flex items-center gap-1 px-2.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-semibold"
+      className="lg:hidden flex items-center gap-1 px-2.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-semibold"
       style={{ height: "34px", fontSize: "13px" }}
     >
       오늘

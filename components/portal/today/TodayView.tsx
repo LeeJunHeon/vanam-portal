@@ -166,13 +166,13 @@ export function TodayBody({ data, actions }: { data: TodayData; actions: TaskAct
   );
 }
 
-/** 머리: "오늘" + 날짜 + 오른쪽 버튼(접기·닫기) */
-export function TodayHeader({ data, titleId, action }: { data: TodayData; titleId?: string; action: React.ReactNode }) {
+/** 머리: "오늘" + 날짜 + 오른쪽 자리(닫기 버튼·건수 등) */
+export function TodayHeader({ data, titleId, action }: { data: TodayData; titleId?: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
       <h2 id={titleId} className="font-bold text-gray-900 flex-shrink-0" style={{ fontSize: "15px" }}>오늘</h2>
       <span className="truncate" style={{ fontSize: "12px", color: "#6b7280" }}>{formatTodayDate(data.date)}</span>
-      <div className="ml-auto flex-shrink-0">{action}</div>
+      {action && <div className="ml-auto flex-shrink-0">{action}</div>}
     </div>
   );
 }

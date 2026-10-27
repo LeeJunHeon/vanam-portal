@@ -1,15 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 
 // 업무 비서 '오늘' 자료 (GET /assistant/api/today, 같은 출처·로그인 쿠키 그대로)
 // 401·403·네트워크 오류·형식이 틀린 응답이면 data 는 null — 패널·버튼·타일 요약을 모두 숨긴다.
 // 페이지를 열 때 한 번, 창이 다시 보일 때 마지막으로 부른 지 5분이 넘었으면 다시 부른다.
+// 빨리 보이게: 요청은 이 모듈이 브라우저에서 읽히는 즉시(하이드레이션 전) 시작하고,
+// 마지막 응답을 sessionStorage 에 두었다가(같은 KST 날짜·10분 이내) 먼저 그린 뒤 새 응답으로 바꾼다.
 
 const BASE = PORTAL_APPS.assistant.base;
 const TODAY_URL = `${BASE}/api/today`;
 const STALE_MS = 5 * 60_000;
+const CACHE_PREFIX = "portalToday:";
+const CACHE_MAX_AGE_MS = 10 * 60_000;
+const EARLY_MAX_AGE_MS = 10_000; // 이보다 오래된 미리 보낸 요청은 쓰지 않는다
+const KST_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD
+
+const fetchToday = () => fetch(TODAY_URL, { credentials: "same-origin", cache: "no-store" });
+
+// 첫 화면 스크립트가 읽히자마자 요청을 보낸다(다른 첫 화면 요청·하이드레이션을 기다리지 않음)
+let early: { at: number; res: Promise<Response> } | null = null;
+if (typeof window !== "undefined") {
+  const res = fetchToday();
+  res.catch(() => {}); // 쓰이지 않고 실패해도 처리되지 않은 거부로 남지 않게
+  early = { at: Date.now(), res };
+}
+function takeEarly(): Promise<Response> | null {
+  const e = early;
+  early = null;
+  return e && Date.now() - e.at < EARLY_MAX_AGE_MS ? e.res : null;
+}
 
 export type TodayGroup = "overdue" | "today" | "new" | "week" | "later" | "none";
 export type TodayBanner = "connect" | "setup" | "stale";
@@ -91,8 +112,45 @@ function parseToday(raw: unknown): TodayData | null {
   };
 }
 
+function cacheKey(): string {
+  return CACHE_PREFIX + KST_DATE.format(new Date());
+}
+
+// 같은 KST 날짜·10분 이내 저장분만 쓴다. 저장은 원래 응답 그대로 두고 읽을 때 다시 검사한다.
+function readCache(): TodayData | null {
+  try {
+    const raw = sessionStorage.getItem(cacheKey());
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { at?: unknown; body?: unknown };
+    if (typeof saved.at !== "number" || Date.now() - saved.at > CACHE_MAX_AGE_MS) return null;
+    const data = parseToday(saved.body);
+    return data && data.date === KST_DATE.format(new Date()) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(body: unknown): void {
+  try {
+    clearTodayCache(); // 지난 날짜 저장분도 같이 지운다
+    sessionStorage.setItem(cacheKey(), JSON.stringify({ at: Date.now(), body }));
+  } catch {}
+}
+
+/** 저장해 둔 '오늘' 응답을 모두 지운다(401·403, 로그아웃) */
+export function clearTodayCache(): void {
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith(CACHE_PREFIX)) sessionStorage.removeItem(k);
+    }
+  } catch {}
+}
+
 export interface AssistantToday {
   data: TodayData | null;
+  /** 아직 응답·저장분이 없어 자리표시를 보여야 하는 동안 true */
+  loading: boolean;
   reload: () => void;
   /** 화면에서 그 할 일 줄만 바로 지운다(완료 처리 성공 직후, 다시 불러오기 전) */
   dropTask: (id: string) => void;
@@ -100,20 +158,40 @@ export interface AssistantToday {
 
 export function useAssistantToday(): AssistantToday {
   const [data, setData] = useState<TodayData | null>(null);
+  const [loading, setLoading] = useState(true);
   const lastLoaded = useRef(0);
   const seq = useRef(0);
 
   const reload = useCallback(() => {
     const mine = ++seq.current;
     lastLoaded.current = Date.now();
-    fetch(TODAY_URL, { credentials: "same-origin", cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: unknown) => {
-        if (mine === seq.current) setData(d ? parseToday(d) : null);
+    const settle = (next: TodayData | null) => {
+      if (mine !== seq.current) return;
+      setData(next);
+      setLoading(false);
+    };
+    (takeEarly() ?? fetchToday())
+      .then(async (r) => {
+        if (r.status === 401 || r.status === 403) {
+          clearTodayCache();
+          return settle(null);
+        }
+        const body: unknown = r.ok ? await r.json() : null;
+        const next = body ? parseToday(body) : null;
+        if (next) writeCache(body);
+        settle(next);
       })
-      .catch(() => {
-        if (mine === seq.current) setData(null);
-      });
+      .catch(() => settle(null));
+  }, []);
+
+  // 저장분은 그리기 전에 읽어 자리표시가 깜빡이지 않게 한다(서버 렌더와 첫 화면을 맞추려고 마운트 뒤에 읽음)
+  useLayoutEffect(() => {
+    const cached = readCache();
+    if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setData(cached);
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -129,7 +207,7 @@ export function useAssistantToday(): AssistantToday {
     setData((cur) => (cur ? { ...cur, tasks: cur.tasks.filter((t) => t.id !== id) } : cur));
   }, []);
 
-  return { data, reload, dropTask };
+  return { data, loading, reload, dropTask };
 }
 
 /**
