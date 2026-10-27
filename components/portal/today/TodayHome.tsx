@@ -1,7 +1,7 @@
 "use client";
 
 import { useToday } from "./TodayProvider";
-import { EmptyTasks, TaskRow, TodayBody, TodayHeader } from "./TodayView";
+import { EmptyTasks, needsSetup, SetupGuide, TaskRow, TodayBody, TodayHeader } from "./TodayView";
 
 // 첫 화면의 '오늘': 1024px 이상 오른쪽 열 맨 위 카드 · 1024px 미만 맨 위 카드(할 일 3줄 + 더 보기)
 // 응답·저장분을 기다리는 동안은 같은 모양의 자리표시를 두어 아래 카드가 밀리지 않게 하고,
@@ -85,32 +85,39 @@ export function TodayCompactCard() {
   }
   if (!today.data) return null;
   const { data, actions } = today;
+  const setup = needsSetup(data);
   return (
     <section className={`lg:hidden flex flex-col gap-2 ${CARD_CLASS}`} style={CARD_STYLE} aria-label="오늘">
       <TodayHeader
         data={data}
         action={
-          <span className="tabular-nums" style={{ fontSize: "11px", color: "#6b7280" }}>
-            할 일 {data.counts.active} · 일정 {data.events.length}
-          </span>
+          setup ? undefined : (
+            <span className="tabular-nums" style={{ fontSize: "11px", color: "#6b7280" }}>
+              할 일 {data.counts.active} · 일정 {data.events.length}
+            </span>
+          )
         }
       />
-      {data.tasks.length === 0 ? (
+      {setup ? (
+        <SetupGuide compact />
+      ) : data.tasks.length === 0 ? (
         <EmptyTasks />
       ) : (
         <ul className="flex flex-col -mx-1">
           {data.tasks.slice(0, COMPACT_TASKS).map((t) => <TaskRow key={t.id} task={t} actions={actions} />)}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={(e) => today.openSheet(e.currentTarget)}
-        aria-haspopup="dialog"
-        className="self-stretch rounded-lg hover:bg-gray-100 transition-colors font-medium"
-        style={{ fontSize: "12px", color: "#374151", backgroundColor: "#f9fafb", height: "34px" }}
-      >
-        더 보기
-      </button>
+      {!setup && (
+        <button
+          type="button"
+          onClick={(e) => today.openSheet(e.currentTarget)}
+          aria-haspopup="dialog"
+          className="self-stretch rounded-lg hover:bg-gray-100 transition-colors font-medium"
+          style={{ fontSize: "12px", color: "#374151", backgroundColor: "#f9fafb", height: "34px" }}
+        >
+          더 보기
+        </button>
+      )}
     </section>
   );
 }

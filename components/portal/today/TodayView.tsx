@@ -10,15 +10,22 @@ import type { TodayData, TodayTask } from "./useAssistantToday";
 const BASE = PORTAL_APPS.assistant.base;
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
+const HELP_URL = `${BASE}/?page=help`;
+const TROUBLE_URL = `${BASE}/?page=help#help-trouble`; // 업무 비서 사용법의 '문제 해결' 위치
+
 const BANNER_TEXT = {
   connect: "수집 연결 필요",
   setup: "처음 설정 필요",
-  stale: "최근 분석 없음",
 } as const;
 
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
 };
+
+/** 수집 연결·처음 설정이 안 됐고 할 일도 없으면 목록 대신 설정 안내를 보여 준다 */
+export function needsSetup(data: TodayData): boolean {
+  return (data.status.banner === "connect" || data.status.banner === "setup") && data.tasks.length === 0;
+}
 
 /** "2026-10-27" → "10월 27일 (화)" */
 export function formatTodayDate(date: string): string {
@@ -89,6 +96,29 @@ export function TaskRow({ task, actions }: { task: TodayTask; actions: TaskActio
   );
 }
 
+/** 설정 안내(제목·설명·[설정 방법 보기]). compact 는 좁은 화면 맨 위 카드용 짧은 모양 */
+export function SetupGuide({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`flex flex-col items-start ${compact ? "gap-2" : "gap-3"}`} style={{ padding: compact ? "2px 0" : "4px 0" }}>
+      <div className="flex flex-col gap-1">
+        <p className="font-semibold" style={{ fontSize: "13px", color: "#111827" }}>업무 비서를 아직 설정하지 않았습니다.</p>
+        {!compact && (
+          <p style={{ fontSize: "12px", color: "#6b7280", lineHeight: 1.5 }}>
+            처음 한 번 설정하면 매일 아침 할 일이 여기에 나옵니다.
+          </p>
+        )}
+      </div>
+      <a
+        href={HELP_URL}
+        className="inline-flex items-center rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+        style={{ fontSize: "12px", padding: "7px 12px", textDecoration: "none" }}
+      >
+        설정 방법 보기
+      </a>
+    </div>
+  );
+}
+
 export function EmptyTasks() {
   return <p style={{ fontSize: "12px", color: "#9ca3af", padding: "6px 4px" }}>오늘 처리할 할 일이 없습니다.</p>;
 }
@@ -96,6 +126,7 @@ export function EmptyTasks() {
 /** 패널·서랍·시트 본문: 내 할 일 · 오늘 일정 · 분석 상태 */
 export function TodayBody({ data, actions }: { data: TodayData; actions: TaskActions }) {
   const { status } = data;
+  if (needsSetup(data)) return <SetupGuide />;
   return (
     <div className="flex flex-col gap-4">
       <section aria-label="내 할 일">
@@ -150,10 +181,22 @@ export function TodayBody({ data, actions }: { data: TodayData; actions: TaskAct
         className="flex items-center gap-1.5 flex-wrap"
         style={{ fontSize: "11px", color: "#9ca3af", borderTop: "0.5px solid #f3f4f6", paddingTop: "10px" }}
       >
-        {status.banner ? (
+        {status.banner === "connect" || status.banner === "setup" ? (
+          // 설정이 덜 된 상태는 눈에 띄게(주황 바탕 줄)
+          <div
+            className="flex items-center gap-2 flex-wrap w-full rounded-lg"
+            style={{ backgroundColor: "#fff7ed", padding: "6px 10px" }}
+          >
+            <span style={{ fontSize: "12px", color: "#ea580c", fontWeight: 600 }}>{BANNER_TEXT[status.banner]}</span>
+            <a href={HELP_URL} className="ml-auto font-medium hover:underline" style={{ fontSize: "12px", color: "#2563eb" }}>
+              설정 방법 보기
+            </a>
+          </div>
+        ) : status.banner === "stale" ? (
           <>
-            <span style={{ color: "#ea580c", fontWeight: 500 }}>{BANNER_TEXT[status.banner]}</span>
-            <a href={`${BASE}/?page=help`} className="hover:underline" style={{ color: "#2563eb" }}>사용법</a>
+            <span style={{ color: "#ea580c", fontWeight: 500 }}>최근 분석 없음</span>
+            <span aria-hidden>·</span>
+            <a href={TROUBLE_URL} className="hover:underline" style={{ color: "#2563eb" }}>해결 방법</a>
           </>
         ) : (
           <span className="tabular-nums">

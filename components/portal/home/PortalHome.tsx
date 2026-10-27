@@ -12,6 +12,7 @@ import ServerStatus from "@/components/portal/ServerStatus";
 import AlertPanel from "@/components/portal/AlertPanel";
 import { useToday } from "@/components/portal/today/TodayProvider";
 import { TodayCard, TodayCompactCard } from "@/components/portal/today/TodayHome";
+import { needsSetup } from "@/components/portal/today/TodayView";
 import AppColumn from "./AppColumn";
 import FavoritesSection from "./FavoritesSection";
 import FrequentSection from "./FrequentSection";
@@ -38,7 +39,9 @@ export default function PortalHome() {
         ...summaries.apps,
         assistant: {
           ...summaries.apps.assistant,
-          stat1: `신규 ${today.counts.new} · 오늘 마감 ${today.counts.today} · 진행 ${today.counts.active}`,
+          stat1: needsSetup(today)
+            ? "설정 필요"
+            : `신규 ${today.counts.new} · 오늘 마감 ${today.counts.today} · 진행 ${today.counts.active}`,
         },
       }
     : summaries.apps;
