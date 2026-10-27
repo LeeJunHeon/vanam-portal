@@ -40,17 +40,20 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
 
   const onComplete = useCallback(async (task: TodayTask) => {
     setPending((cur) => new Set(cur).add(task.id));
-    const ok = await completeTask(task.id);
+    const { result, authLost } = await completeTask(task.id);
     setPending((cur) => {
       const next = new Set(cur);
       next.delete(task.id);
       return next;
     });
-    if (ok) {
+    // done·gone(이미 처리됐거나 사라진 할 일)은 토스트 없이 줄을 지우고 다시 불러온다
+    if (result !== "failed") {
       dropTask(task.id);
       reload();
       return;
     }
+    // 로그인 만료 등(401·403): 다시 불러 패널이 숨겨지게 한다
+    if (authLost) reload();
     setToast("완료 처리하지 못했습니다. 업무 비서에서 다시 시도하세요.");
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);

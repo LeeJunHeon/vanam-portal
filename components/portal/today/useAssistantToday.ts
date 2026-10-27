@@ -132,8 +132,20 @@ export function useAssistantToday(): AssistantToday {
   return { data, reload, dropTask };
 }
 
-/** 완료 처리: 성공하면 true */
-export async function completeTask(id: string): Promise<boolean> {
+/**
+ * 완료 처리 결과
+ * - done: 완료됨(2xx)
+ * - gone: 이미 그 상태(409)·없는 할 일(404) — 다른 화면에서 이미 처리됐거나 사라진 경우
+ * - failed: 그 밖의 상태 코드·네트워크 오류
+ */
+export type CompleteResult = "done" | "gone" | "failed";
+
+export interface CompleteOutcome {
+  result: CompleteResult;
+  authLost: boolean; // 401·403(로그인 만료 등) — today 를 다시 불러 패널을 숨긴다
+}
+
+export async function completeTask(id: string): Promise<CompleteOutcome> {
   try {
     const r = await fetch(`${BASE}/api/tasks/${encodeURIComponent(id)}/status`, {
       method: "POST",
@@ -141,8 +153,10 @@ export async function completeTask(id: string): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "completed" }),
     });
-    return r.ok;
+    if (r.ok) return { result: "done", authLost: false };
+    if (r.status === 404 || r.status === 409) return { result: "gone", authLost: false };
+    return { result: "failed", authLost: r.status === 401 || r.status === 403 };
   } catch {
-    return false;
+    return { result: "failed", authLost: false };
   }
 }
