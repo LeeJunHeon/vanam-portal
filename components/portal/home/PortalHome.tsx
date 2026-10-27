@@ -10,6 +10,8 @@ import { PORTAL_APPS } from "@/lib/portal-apps";
 import ActivityLog from "@/components/portal/ActivityLog";
 import ServerStatus from "@/components/portal/ServerStatus";
 import AlertPanel from "@/components/portal/AlertPanel";
+import { useToday } from "@/components/portal/today/TodayProvider";
+import { TodayMobileCard, TodayPanel } from "@/components/portal/today/TodayHome";
 import AppColumn from "./AppColumn";
 import FavoritesSection from "./FavoritesSection";
 import FrequentSection from "./FrequentSection";
@@ -24,10 +26,22 @@ import { useNasStatus } from "./useNasStatus";
 const TOAST_MS = 2500;
 
 // 포털 첫 화면: 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그 · 오른쪽 서버 상태·알림
+// 1600px 이상은 가운데와 서버 상태 사이에 업무 비서 '오늘' 패널(4단), 768px 미만은 맨 위에 '오늘' 카드
 export default function PortalHome() {
   // 서버 상태는 여기서 한 번만 불러 서버 상태 카드와 앱 카드 뱃지가 같이 쓴다
   const nas = useNasStatus();
   const summaries = useAppSummaries(nas.data?.containers ?? null);
+  // 업무 비서 타일 요약은 '오늘' 응답을 다시 쓴다(못 받으면 설명 문구 그대로)
+  const today = useToday()?.data;
+  const appSummaries = today
+    ? {
+        ...summaries.apps,
+        assistant: {
+          ...summaries.apps.assistant,
+          stat1: `신규 ${today.counts.new} · 오늘 마감 ${today.counts.today} · 진행 ${today.counts.active}`,
+        },
+      }
+    : summaries.apps;
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((msg: string) => {
@@ -111,12 +125,11 @@ export default function PortalHome() {
 
   return (
     <>
-      <div
-        className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4 sm:px-5"
-        style={{ maxWidth: "1360px" }}
-      >
+      <div className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4 sm:px-5 max-w-[1360px] min-[1600px]:max-w-[1880px]">
+        <TodayMobileCard />
+
         <aside className="lg:w-[220px] lg:flex-shrink-0 min-w-0" aria-label="앱">
-          <AppColumn order={order} summaries={summaries.apps} editing={editing} onMove={handleMoveApp} />
+          <AppColumn order={order} summaries={appSummaries} editing={editing} onMove={handleMoveApp} />
         </aside>
 
         <main className="flex-1 min-w-0 flex flex-col gap-4">
@@ -155,6 +168,8 @@ export default function PortalHome() {
 
           <ActivityLog />
         </main>
+
+        <TodayPanel />
 
         <aside className="flex flex-col gap-4 lg:w-[260px] lg:flex-shrink-0">
           <ServerStatus data={nas.data} stale={nas.stale} />

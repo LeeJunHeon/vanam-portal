@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { LogOut } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/NotificationBell";
+import { TodayButton } from "@/components/portal/today/TodayProvider";
 
 export default function TopBar() {
   const { data: session, status } = useSession();
@@ -44,8 +45,9 @@ export default function TopBar() {
           </div>
         </div>
 
-        {/* 우측: 알림 + 사용자 정보 + 로그아웃 */}
+        {/* 우측: 오늘(업무 비서) + 알림 + 사용자 정보 + 로그아웃 */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <TodayButton />
           <NotificationBell
             apiUrl="/hr/api/portal-notifications"
             crossOrigin
