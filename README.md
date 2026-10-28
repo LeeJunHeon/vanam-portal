@@ -16,15 +16,15 @@
 | translator | 실시간 통역 | /translator | `TRANSLATOR_HEALTH_URL` (기본 http://192.168.0.83:8790/translator/healthz) |
 | assistant | 업무 비서 | /assistant | `ASSISTANT_HEALTH_URL` (기본 http://ai-assistant-web:8000/assistant/healthz) |
 
-- 업무 비서는 Python 앱(NAS 컨테이너 `ai-assistant-web:8000`)이다. 포털 로그인 쿠키로 인사 앱 `/hr/api/me` 를 확인해 로그인하고, `portal-menus`(할 일·내 업무 메모)와 `?page=tasks|memo` 딥링크, 로그인 없는 `GET /assistant/healthz` 를 제공한다. `/api/portal-summary` 대신 `GET /assistant/api/today` 를 브라우저에서 불러 앱 카드 요약(신규·오늘 마감·진행)과 첫 화면 '오늘'에 쓴다(401·403·오류면 설명 문구만 나오고 '오늘'은 숨긴다).
+- 업무 비서는 Python 앱(NAS 컨테이너 `ai-assistant-web:8000`)이다. 포털 로그인 쿠키로 인사 앱 `/hr/api/me` 를 확인해 로그인하고, `portal-menus`(할 일·내 업무 메모)와 `?page=tasks|memo` 딥링크, 로그인 없는 `GET /assistant/healthz` 를 제공한다. `/api/portal-summary` 대신 `GET /assistant/api/today` 를 브라우저에서 불러 앱 카드 요약(신규·오늘 마감·진행)과 첫 화면 '내 할 일' 카드에 쓴다(401·403·오류면 설명 문구만 나오고 '내 할 일' 카드는 숨긴다).
 - 포털 컨테이너(`portal-nextjs`)는 `docker-compose.yml` 에서 외부 네트워크 `vanam-db-net` 에 붙어 있다. 업무 비서 컨테이너도 `vanam-db-net` 에 있으므로 포털은 컨테이너 이름 `ai-assistant-web` 으로 바로 닿는다. 업무 비서가 다른 네트워크로 옮겨지면 `ASSISTANT_HEALTH_URL` 을 바꾼다.
 - 저장된 사용자 앱 순서에 새 앱이 없으면 `normalizeAppOrder` 가 기본 순서대로 뒤에 붙인다.
 
 ## 첫 화면
 
-- 1024px 이상(3단, 가운데 정렬, 최대 1420px): 왼쪽 앱 카드 | 가운데 즐겨찾기·자주 쓰는 메뉴·전체 메뉴·활동 로그 | 오른쪽 열(310px)에 위에서부터 업무 비서 '오늘' → 알림 → 서버 상태.
-- 1024px 미만: 맨 위 '오늘' 카드(할 일 3줄), [더 보기]·상단바 [오늘] 버튼은 시트(넓은 화면에서는 가운데 최대 560px)로 '오늘' 전체를 연다.
-- '오늘'은 내 할 일(체크하면 `POST /assistant/api/tasks/{id}/status` 로 완료)·오늘 일정·분석 상태를 보여 준다. 업무 비서 명단에 없는 사람(401·403)·오류일 때는 '오늘'만 빠지고 알림·서버 상태는 그대로 있다.
+- 1024px 이상(3단, 가운데 정렬, 최대 1420px): 왼쪽 앱 카드 | 가운데 즐겨찾기·자주 쓰는 메뉴·전체 메뉴·활동 로그 | 오른쪽 열(310px)에 위에서부터 업무 비서 '내 할 일' → 알림 → 서버 상태.
+- 1024px 미만: 맨 위 '내 할 일' 카드(할 일 3줄), [더 보기]·상단바 [내 할 일] 버튼(640px 미만은 아이콘 + 숫자)은 시트(넓은 화면에서는 가운데 최대 560px)로 전체 내용을 연다.
+- '내 할 일' 카드는 할 일 목록(체크하면 `POST /assistant/api/tasks/{id}/status` 로 완료)·오늘 일정·분석 상태를 보여 준다. 업무 비서 명단에 없는 사람(401·403)·오류일 때는 이 카드만 빠지고 알림·서버 상태는 그대로 있다.
 - `/assistant/api/today` 요청은 첫 화면 스크립트가 읽히는 즉시 시작한다. 마지막 응답은 sessionStorage(`portalToday:<KST 날짜>`, 10분)에 두었다가 먼저 그리고, 없으면 같은 모양의 자리표시를 둔다. 401·403·로그아웃 때 지운다.
 
 ## 배포 (NAS)

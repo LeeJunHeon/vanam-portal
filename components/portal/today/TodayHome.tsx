@@ -3,7 +3,7 @@
 import { useToday } from "./TodayProvider";
 import { EmptyTasks, needsSetup, SetupGuide, TaskRow, TodayBody, TodayHeader } from "./TodayView";
 
-// 첫 화면의 '오늘': 1024px 이상 오른쪽 열 맨 위 카드 · 1024px 미만 맨 위 카드(할 일 3줄 + 더 보기)
+// 첫 화면의 업무 비서 '내 할 일': 1024px 이상 오른쪽 열 맨 위 카드 · 1024px 미만 맨 위 카드(할 일 3줄 + 더 보기)
 // 응답·저장분을 기다리는 동안은 같은 모양의 자리표시를 두어 아래 카드가 밀리지 않게 하고,
 // 401·403·오류로 확정되면 자리표시도 없앤다.
 
@@ -31,7 +31,7 @@ function SkeletonRows({ count }: { count: number }) {
   );
 }
 
-/** 1024px 이상: 오른쪽 열 맨 위 '오늘' 카드(알림·서버 상태와 같은 폭) */
+/** 1024px 이상: 오른쪽 열 맨 위 '내 할 일' 카드(알림·서버 상태와 같은 폭) */
 export function TodayCard() {
   const today = useToday();
   if (!today) return null;
@@ -43,10 +43,7 @@ export function TodayCard() {
           <Bar width={84} />
         </div>
         {/* 높이는 보통 경우(할 일 4줄 + 일정 2줄)에 맞춘다 */}
-        <div className="flex flex-col gap-1.5">
-          <Bar width={72} height={11} />
-          <SkeletonRows count={4} />
-        </div>
+        <SkeletonRows count={4} />
         <div className="flex flex-col gap-2.5">
           <Bar width={72} height={11} />
           <Bar width="75%" />
@@ -60,7 +57,7 @@ export function TodayCard() {
   }
   if (!today.data) return null;
   return (
-    <section className={`hidden lg:flex flex-col gap-4 ${CARD_CLASS}`} style={CARD_STYLE} aria-label="오늘">
+    <section className={`hidden lg:flex flex-col gap-4 ${CARD_CLASS}`} style={CARD_STYLE} aria-label="내 할 일">
       <TodayHeader data={today.data} />
       <TodayBody data={today.data} actions={today.actions} />
     </section>
@@ -87,17 +84,8 @@ export function TodayCompactCard() {
   const { data, actions } = today;
   const setup = needsSetup(data);
   return (
-    <section className={`lg:hidden flex flex-col gap-2 ${CARD_CLASS}`} style={CARD_STYLE} aria-label="오늘">
-      <TodayHeader
-        data={data}
-        action={
-          setup ? undefined : (
-            <span className="tabular-nums" style={{ fontSize: "11px", color: "#6b7280" }}>
-              할 일 {data.counts.active} · 일정 {data.events.length}
-            </span>
-          )
-        }
-      />
+    <section className={`lg:hidden flex flex-col gap-2 ${CARD_CLASS}`} style={CARD_STYLE} aria-label="내 할 일">
+      <TodayHeader data={data} />
       {setup ? (
         <SetupGuide compact />
       ) : data.tasks.length === 0 ? (

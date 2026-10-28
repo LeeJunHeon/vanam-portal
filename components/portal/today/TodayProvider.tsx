@@ -1,16 +1,16 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ListChecks, X } from "lucide-react";
 import Toast from "@/components/portal/home/Toast";
 import { completeTask, type TodayData, type TodayTask, useAssistantToday } from "./useAssistantToday";
 import { type TaskActions, TodayBody, TodayHeader } from "./TodayView";
 
-// 업무 비서 '오늘' 공유 상태: 상단바 [오늘] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 비서 타일 요약이 같이 쓴다.
-// 1024px 미만에서만 [오늘] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
+// 업무 비서 '내 할 일' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 비서 타일 요약이 같이 쓴다.
+// 1024px 미만에서만 [내 할 일] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
 
 const TOAST_MS = 2500;
-const WIDE_QUERY = "(min-width: 1024px)"; // 이 폭부터는 오른쪽 열에 '오늘'이 보여 시트를 닫는다
+const WIDE_QUERY = "(min-width: 1024px)"; // 이 폭부터는 오른쪽 열에 '내 할 일'이 보여 시트를 닫는다
 
 interface TodayContextValue {
   data: TodayData | null;
@@ -150,12 +150,12 @@ function TodaySheet({ data, actions, onClose, returnTo }: {
             <TodayHeader
               data={data}
               titleId={titleId}
-              action={
+              extra={
                 <button
                   ref={closeRef}
                   type="button"
                   onClick={onClose}
-                  aria-label="오늘 닫기"
+                  aria-label="내 할 일 닫기"
                   className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
                 >
                   <X size={18} />
@@ -172,7 +172,10 @@ function TodaySheet({ data, actions, onClose, returnTo }: {
   );
 }
 
-/** 상단바 [오늘 N] 버튼 — 1024px 이상에서는 오른쪽 열에 '오늘'이 보이므로 숨긴다 */
+/**
+ * 상단바 [내 할 일 N] 버튼 — 1024px 이상에서는 오른쪽 열에 카드가 보이므로 숨긴다.
+ * 640px 미만은 글자가 길어 아이콘 + 숫자만 보인다.
+ */
 export function TodayButton() {
   const today = useToday();
   if (!today?.data) return null;
@@ -183,11 +186,13 @@ export function TodayButton() {
       onClick={(e) => today.openSheet(e.currentTarget)}
       aria-haspopup="dialog"
       aria-expanded={today.sheetOpen}
-      aria-label={n > 0 ? `오늘 할 일 ${n}건 보기` : "오늘 보기"}
-      className="lg:hidden flex items-center gap-1 px-2.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-semibold"
+      aria-label={n > 0 ? `내 할 일 ${n}건` : "내 할 일"}
+      title="내 할 일"
+      className="lg:hidden flex items-center gap-1 px-2 sm:px-2.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-semibold whitespace-nowrap"
       style={{ height: "34px", fontSize: "13px" }}
     >
-      오늘
+      <ListChecks size={18} className="sm:hidden text-gray-500" aria-hidden />
+      <span className="hidden sm:inline">내 할 일</span>
       {n > 0 && (
         <span
           className="min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center tabular-nums"

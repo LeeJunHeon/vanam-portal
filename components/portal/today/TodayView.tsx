@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import type { TodayData, TodayTask } from "./useAssistantToday";
 
-// '오늘' 내용 조각 — 넓은 화면 패널·서랍·모바일 시트·모바일 카드가 같이 쓴다
+// 업무 비서 '내 할 일' 카드 조각 — 오른쪽 열 카드·좁은 화면 맨 위 카드·시트가 같이 쓴다
 // 글자는 모두 React 텍스트로만 넣는다(HTML 로 해석하지 않음)
 
 const BASE = PORTAL_APPS.assistant.base;
@@ -123,26 +123,13 @@ export function EmptyTasks() {
   return <p style={{ fontSize: "12px", color: "#9ca3af", padding: "6px 4px" }}>오늘 처리할 할 일이 없습니다.</p>;
 }
 
-/** 패널·서랍·시트 본문: 내 할 일 · 오늘 일정 · 분석 상태 */
+/** 카드·시트 본문: 할 일 목록 · 오늘 일정 · 분석 상태 (건수·[전체 보기]는 머리에 있다) */
 export function TodayBody({ data, actions }: { data: TodayData; actions: TaskActions }) {
   const { status } = data;
   if (needsSetup(data)) return <SetupGuide />;
   return (
     <div className="flex flex-col gap-4">
-      <section aria-label="내 할 일">
-        <div className="flex items-center gap-1.5" style={{ marginBottom: "6px" }}>
-          <h3 style={LABEL_STYLE}>내 할 일</h3>
-          <span className="tabular-nums" style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>
-            {data.counts.active}
-          </span>
-          <a
-            href={`${BASE}/?page=tasks`}
-            className="ml-auto flex items-center gap-0.5 hover:underline"
-            style={{ fontSize: "11px", color: "#2563eb" }}
-          >
-            전체 보기 <ArrowRight size={12} aria-hidden />
-          </a>
-        </div>
+      <section aria-label="할 일 목록">
         {data.tasks.length === 0 ? (
           <EmptyTasks />
         ) : (
@@ -209,13 +196,33 @@ export function TodayBody({ data, actions }: { data: TodayData; actions: TaskAct
   );
 }
 
-/** 머리: "오늘" + 날짜 + 오른쪽 자리(닫기 버튼·건수 등) */
-export function TodayHeader({ data, titleId, action }: { data: TodayData; titleId?: string; action?: React.ReactNode }) {
+/**
+ * 머리 한 줄: "내 할 일" + 건수 + 작은 날짜 + 오른쪽 [전체 보기 →] (+ 시트의 닫기 버튼 등 extra).
+ * 설정 안내 상태면 건수·[전체 보기]를 숨긴다. 좁으면 날짜만 말줄임한다.
+ */
+export function TodayHeader({ data, titleId, extra }: { data: TodayData; titleId?: string; extra?: React.ReactNode }) {
+  const setup = needsSetup(data);
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <h2 id={titleId} className="font-bold text-gray-900 flex-shrink-0" style={{ fontSize: "15px" }}>오늘</h2>
-      <span className="truncate" style={{ fontSize: "12px", color: "#6b7280" }}>{formatTodayDate(data.date)}</span>
-      {action && <div className="ml-auto flex-shrink-0">{action}</div>}
+    <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+      <h2 id={titleId} className="font-bold text-gray-900 flex-shrink-0" style={{ fontSize: "15px" }}>내 할 일</h2>
+      {!setup && (
+        <span className="tabular-nums flex-shrink-0" style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>
+          {data.counts.active}
+        </span>
+      )}
+      <span className="truncate min-w-0" style={{ fontSize: "11px", color: "#9ca3af" }}>{formatTodayDate(data.date)}</span>
+      <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+        {!setup && (
+          <a
+            href={`${BASE}/?page=tasks`}
+            className="flex items-center gap-0.5 hover:underline"
+            style={{ fontSize: "11px", color: "#2563eb" }}
+          >
+            전체 보기 <ArrowRight size={12} aria-hidden />
+          </a>
+        )}
+        {extra}
+      </div>
     </div>
   );
 }
