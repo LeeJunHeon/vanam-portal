@@ -3,7 +3,7 @@
 import { useToday } from "./TodayProvider";
 import { EmptyTasks, needsSetup, SetupGuide, TaskRow, TodayBody, TodayHeader } from "./TodayView";
 
-// 첫 화면의 업무 비서 '내 할 일': 1024px 이상 오른쪽 열 맨 위 카드 · 1024px 미만 맨 위 카드(할 일 3줄 + 더 보기)
+// 첫 화면의 업무 관리 '내 할 일': 1024px 이상 오른쪽 열 맨 위 카드 · 1024px 미만 맨 위 카드(할 일 3줄 + 더 보기)
 // 응답·저장분을 기다리는 동안은 같은 모양의 자리표시를 두어 아래 카드가 밀리지 않게 하고,
 // 401·403·오류로 확정되면 자리표시도 없앤다.
 

@@ -110,8 +110,8 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
   },
   assistant: {
     key: "assistant",
-    name: "업무 비서",
-    short: "업무비서",
+    name: "업무 관리",
+    short: "업무 관리",
     base: "/assistant",
     description: "메일·채팅·일정에서 AI가 찾은 내 할 일",
     icon: Sparkles,

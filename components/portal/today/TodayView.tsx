@@ -4,14 +4,14 @@ import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import type { TodayData, TodayTask } from "./useAssistantToday";
 
-// 업무 비서 '내 할 일' 카드 조각 — 오른쪽 열 카드·좁은 화면 맨 위 카드·시트가 같이 쓴다
+// 업무 관리 '내 할 일' 카드 조각 — 오른쪽 열 카드·좁은 화면 맨 위 카드·시트가 같이 쓴다
 // 글자는 모두 React 텍스트로만 넣는다(HTML 로 해석하지 않음)
 
 const BASE = PORTAL_APPS.assistant.base;
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 const HELP_URL = `${BASE}/?page=help`;
-const TROUBLE_URL = `${BASE}/?page=help#help-trouble`; // 업무 비서 사용법의 '문제 해결' 위치
+const TROUBLE_URL = `${BASE}/?page=help#help-trouble`; // 업무 관리 사용법의 '문제 해결' 위치
 
 const BANNER_TEXT = {
   connect: "수집 연결 필요",
@@ -101,7 +101,7 @@ export function SetupGuide({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`flex flex-col items-start ${compact ? "gap-2" : "gap-3"}`} style={{ padding: compact ? "2px 0" : "4px 0" }}>
       <div className="flex flex-col gap-1">
-        <p className="font-semibold" style={{ fontSize: "13px", color: "#111827" }}>업무 비서를 아직 설정하지 않았습니다.</p>
+        <p className="font-semibold" style={{ fontSize: "13px", color: "#111827" }}>업무 관리를 아직 설정하지 않았습니다.</p>
         {!compact && (
           <p style={{ fontSize: "12px", color: "#6b7280", lineHeight: 1.5 }}>
             처음 한 번 설정하면 매일 아침 할 일이 여기에 나옵니다.

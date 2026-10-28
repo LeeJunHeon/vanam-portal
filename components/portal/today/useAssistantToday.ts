@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 
-// 업무 비서 '오늘' 자료 (GET /assistant/api/today, 같은 출처·로그인 쿠키 그대로)
+// 업무 관리 '오늘' 자료 (GET /assistant/api/today, 같은 출처·로그인 쿠키 그대로)
 // 401·403·네트워크 오류·형식이 틀린 응답이면 data 는 null — 패널·버튼·타일 요약을 모두 숨긴다.
 // 페이지를 열 때 한 번, 창이 다시 보일 때 마지막으로 부른 지 5분이 넘었으면 다시 부른다.
 // 빨리 보이게: 요청은 이 모듈이 브라우저에서 읽히는 즉시(하이드레이션 전) 시작하고,
@@ -66,7 +66,7 @@ const str = (v: unknown): string | null => (typeof v === "string" && v ? v : nul
 const obj = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 
-// 업무 비서 안의 경로만 링크로 쓴다(javascript: 등 다른 주소는 할 일 목록으로)
+// 업무 관리 안의 경로만 링크로 쓴다(javascript: 등 다른 주소는 할 일 목록으로)
 function safeTaskUrl(v: unknown): string {
   return typeof v === "string" && v.startsWith(`${BASE}/`) ? v : `${BASE}/?page=tasks`;
 }

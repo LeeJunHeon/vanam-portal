@@ -18,6 +18,7 @@ import FavoritesSection from "./FavoritesSection";
 import FrequentSection from "./FrequentSection";
 import AllMenusSection from "./AllMenusSection";
 import EditBanner from "./EditBanner";
+import AppOrderSheet from "./AppOrderSheet";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import { useAppSummaries } from "./useAppSummaries";
@@ -27,12 +28,12 @@ import { useNasStatus } from "./useNasStatus";
 const TOAST_MS = 2500;
 
 // 포털 첫 화면(3단, 가운데 정렬): 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그
-// · 오른쪽 열(업무 비서 '내 할 일' → 알림 → 서버 상태, 세 카드 같은 폭). 1024px 미만은 '내 할 일'을 맨 위 카드로
+// · 오른쪽 열(업무 관리 '내 할 일' → 알림 → 서버 상태, 세 카드 같은 폭). 1024px 미만은 '내 할 일'을 맨 위 카드로
 export default function PortalHome() {
   // 서버 상태는 여기서 한 번만 불러 서버 상태 카드와 앱 카드 뱃지가 같이 쓴다
   const nas = useNasStatus();
   const summaries = useAppSummaries(nas.data?.containers ?? null);
-  // 업무 비서 타일 요약은 '오늘' 응답을 다시 쓴다(못 받으면 설명 문구 그대로)
+  // 업무 관리 타일 요약은 '오늘' 응답을 다시 쓴다(못 받으면 설명 문구 그대로)
   const today = useToday()?.data;
   const appSummaries = today
     ? {
@@ -64,6 +65,8 @@ export default function PortalHome() {
   const [allOpen, setAllOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [clearTarget, setClearTarget] = useState<MenuItem | null>(null);
+  const [orderSheetOpen, setOrderSheetOpen] = useState(false);
+  const orderSheetOpener = useRef<HTMLElement | null>(null);
 
   // 경영지원 등 관리자 전용 앱은 admin·CEO 만
   const isVisible = (app: AppKey) => !PORTAL_APPS[app].adminOnly || summaries.isAdmin;
@@ -106,6 +109,17 @@ export default function PortalHome() {
   const handleMoveApp = (from: AppKey, to: AppKey) => {
     updatePrefs((p) => ({ ...p, appOrder: moveItem(normalizeAppOrder(p.appOrder), from, to) }));
   };
+  // 1024px 미만 순서 편집 시트의 ↑↓: 보이는 이웃과 자리를 바꾸고 바로 저장 (숨긴 관리자 전용 앱 자리는 전체 순서에서 그대로)
+  const handleStepApp = (app: AppKey, dir: -1 | 1) => {
+    const to = order[order.indexOf(app) + dir];
+    if (!to) return;
+    updatePrefs((p) => ({ ...p, appOrder: moveItem(normalizeAppOrder(p.appOrder), app, to) }), { immediate: true });
+  };
+  const openOrderSheet = (opener: HTMLElement) => {
+    orderSheetOpener.current = opener;
+    setOrderSheetOpen(true);
+  };
+  const closeOrderSheet = useCallback(() => setOrderSheetOpen(false), []);
   const startEdit = () => {
     setEditing(true);
     setAllOpen(true);
@@ -132,7 +146,16 @@ export default function PortalHome() {
         <TodayCompactCard />
 
         <aside className="lg:w-[220px] lg:flex-shrink-0 min-w-0" aria-label="앱">
-          <AppColumn order={order} summaries={appSummaries} editing={editing} onMove={handleMoveApp} />
+          <AppColumn
+            order={order}
+            summaries={appSummaries}
+            editing={editing}
+            canEdit={launcher.synced}
+            onMove={handleMoveApp}
+            onStartEdit={startEdit}
+            onFinishEdit={finishEdit}
+            onOpenSheet={openOrderSheet}
+          />
         </aside>
 
         <main className="flex-1 min-w-0 flex flex-col gap-4">
@@ -179,6 +202,16 @@ export default function PortalHome() {
         </aside>
       </div>
 
+      {orderSheetOpen && (
+        <AppOrderSheet
+          order={order}
+          onStep={handleStepApp}
+          onReset={() => setConfirmReset(true)}
+          onClose={closeOrderSheet}
+          returnTo={orderSheetOpener}
+          paused={confirmReset}
+        />
+      )}
       {confirmReset && (
         <ConfirmModal
           title="초기화"
@@ -186,6 +219,7 @@ export default function PortalHome() {
           confirmLabel="초기화"
           onCancel={() => setConfirmReset(false)}
           onConfirm={doReset}
+          aboveSheet={orderSheetOpen}
         />
       )}
       {clearTarget && (

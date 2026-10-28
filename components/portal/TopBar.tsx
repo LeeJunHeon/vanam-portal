@@ -46,7 +46,7 @@ export default function TopBar() {
           </div>
         </div>
 
-        {/* 우측: 내 할 일(업무 비서) + 알림 + 사용자 정보 + 로그아웃 */}
+        {/* 우측: 내 할 일(업무 관리) + 알림 + 사용자 정보 + 로그아웃 */}
         <div className="flex items-center gap-2 sm:gap-3">
           <TodayButton />
           <NotificationBell
@@ -99,7 +99,7 @@ export default function TopBar() {
               </button>
               <button
                 onClick={() => {
-                  clearTodayCache(); // 저장해 둔 업무 비서 '내 할 일'을 다음 사용자에게 보이지 않게
+                  clearTodayCache(); // 저장해 둔 업무 관리 '내 할 일'을 다음 사용자에게 보이지 않게
                   void signOut({ callbackUrl: "/login" });
                 }}
                 className="px-4 py-2 text-sm font-bold text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors"

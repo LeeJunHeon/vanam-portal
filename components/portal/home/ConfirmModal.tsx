@@ -7,16 +7,18 @@ export default function ConfirmModal({
   confirmLabel,
   onCancel,
   onConfirm,
+  aboveSheet = false,
 }: {
   title: string;
   message: string;
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
+  aboveSheet?: boolean; // 시트(z-[65]) 위에 띄울 때
 }) {
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className={`fixed inset-0 ${aboveSheet ? "z-[70]" : "z-[60]"} flex items-center justify-center p-4`}
       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       role="dialog"
       aria-modal="true"

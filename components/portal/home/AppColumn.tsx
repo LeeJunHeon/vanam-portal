@@ -6,7 +6,7 @@ import {
   SortableContext, horizontalListSortingStrategy, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronLeft, ChevronRight, GripVertical, Wifi, WifiOff } from "lucide-react";
+import { ArrowUpDown, Check, ChevronLeft, ChevronRight, GripVertical, Wifi, WifiOff } from "lucide-react";
 import type { AppKey } from "@/lib/launcher";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import type { AppSummary } from "./useAppSummaries";
@@ -19,11 +19,17 @@ interface AppColumnProps {
   order: AppKey[]; // 보이는 앱 순서
   summaries: Record<AppKey, AppSummary>;
   editing: boolean;
+  canEdit: boolean; // 서버 배치를 받았음 (아니면 [순서 편집] 비활성)
   onMove: (from: AppKey, to: AppKey) => void;
+  onStartEdit: () => void;                       // lg 이상 [순서 편집] → 기존 편집 모드
+  onFinishEdit: () => void;                      // lg 이상 [완료]
+  onOpenSheet: (opener: HTMLElement) => void;    // lg 미만 [순서 편집] → 순서 편집 시트
 }
 
 // 왼쪽 앱 열 (lg 이상: 세로 카드 / lg 미만: 가로 스크롤 칩)
-export default function AppColumn({ order, summaries, editing, onMove }: AppColumnProps) {
+export default function AppColumn({
+  order, summaries, editing, canEdit, onMove, onStartEdit, onFinishEdit, onOpenSheet,
+}: AppColumnProps) {
   const sensors = useLauncherSensors();
   const onDragEnd = (e: DragEndEvent) => {
     if (e.over && e.active.id !== e.over.id) onMove(e.active.id as AppKey, e.over.id as AppKey);
@@ -33,6 +39,13 @@ export default function AppColumn({ order, summaries, editing, onMove }: AppColu
     <>
       {/* 데스크톱: 세로 카드 */}
       <div className="hidden lg:block">
+        <div className="flex justify-end mb-1.5">
+          {editing ? (
+            <OrderEditButton label="완료" icon="done" onClick={onFinishEdit} />
+          ) : (
+            <OrderEditButton label="순서 편집" icon="edit" disabled={!canEdit} onClick={onStartEdit} />
+          )}
+        </div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
@@ -44,7 +57,16 @@ export default function AppColumn({ order, summaries, editing, onMove }: AppColu
         </DndContext>
       </div>
 
-      {/* 모바일: 가로 스크롤 칩 */}
+      {/* 모바일: 가로 스크롤 칩 (줄 위 오른쪽에 [순서 편집] → 시트) */}
+      <div className="lg:hidden flex justify-end mb-1">
+        <OrderEditButton
+          label="순서 편집"
+          icon="edit"
+          disabled={!canEdit}
+          onClick={(e) => onOpenSheet(e.currentTarget)}
+          haspopup
+        />
+      </div>
       <MobileAppRow>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={horizontalListSortingStrategy}>
@@ -57,6 +79,30 @@ export default function AppColumn({ order, summaries, editing, onMove }: AppColu
         </DndContext>
       </MobileAppRow>
     </>
+  );
+}
+
+// 앱 열 위 작은 회색 버튼 ([순서 편집] / 편집 중 [완료])
+function OrderEditButton({ label, icon, disabled, onClick, haspopup }: {
+  label: string;
+  icon: "edit" | "done";
+  disabled?: boolean;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  haspopup?: boolean;
+}) {
+  const Icon = icon === "done" ? Check : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-haspopup={haspopup ? "dialog" : undefined}
+      className="flex items-center gap-1 px-2 rounded-lg transition-colors hover:bg-white hover:text-gray-700 disabled:opacity-50 disabled:hover:bg-transparent"
+      style={{ height: "28px", fontSize: "12px", color: icon === "done" ? "#2563eb" : "#6b7280", fontWeight: icon === "done" ? 600 : 500 }}
+    >
+      <Icon size={13} aria-hidden />
+      {label}
+    </button>
   );
 }
 

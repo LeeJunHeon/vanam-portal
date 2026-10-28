@@ -6,7 +6,7 @@ import Toast from "@/components/portal/home/Toast";
 import { completeTask, type TodayData, type TodayTask, useAssistantToday } from "./useAssistantToday";
 import { type TaskActions, TodayBody, TodayHeader } from "./TodayView";
 
-// 업무 비서 '내 할 일' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 비서 타일 요약이 같이 쓴다.
+// 업무 관리 '내 할 일' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 관리 타일 요약이 같이 쓴다.
 // 1024px 미만에서만 [내 할 일] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
 
 const TOAST_MS = 2500;
@@ -59,7 +59,7 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
     }
     // 로그인 만료 등(401·403): 다시 불러 패널이 숨겨지게 한다
     if (authLost) reload();
-    setToast("완료 처리하지 못했습니다. 업무 비서에서 다시 시도하세요.");
+    setToast("완료 처리하지 못했습니다. 업무 관리에서 다시 시도하세요.");
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
   }, [dropTask, reload]);
