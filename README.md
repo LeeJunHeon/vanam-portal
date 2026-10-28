@@ -19,7 +19,7 @@
 - 업무 관리는 Python 앱(NAS 컨테이너 `ai-assistant-web:8000`)이다. 포털 로그인 쿠키로 인사 앱 `/hr/api/me` 를 확인해 로그인하고, `portal-menus`(할 일·내 업무 메모)와 `?page=tasks|memo` 딥링크, 로그인 없는 `GET /assistant/healthz` 를 제공한다. `/api/portal-summary` 대신 `GET /assistant/api/today` 를 브라우저에서 불러 앱 카드 요약(신규·오늘 마감·진행)과 첫 화면 '내 할 일' 카드에 쓴다(401·403·오류면 설명 문구만 나오고 '내 할 일' 카드는 숨긴다).
 - 포털 컨테이너(`portal-nextjs`)는 `docker-compose.yml` 에서 외부 네트워크 `vanam-db-net` 에 붙어 있다. 업무 관리 컨테이너도 `vanam-db-net` 에 있으므로 포털은 컨테이너 이름 `ai-assistant-web` 으로 바로 닿는다. 업무 관리가 다른 네트워크로 옮겨지면 `ASSISTANT_HEALTH_URL` 을 바꾼다.
 - 저장된 사용자 앱 순서에 새 앱이 없으면 `normalizeAppOrder` 가 기본 순서대로 뒤에 붙인다.
-- 앱 순서 바꾸기: 1024px 이상은 왼쪽 앱 열 위 [순서 편집] → 끌어서 옮기기 → [완료], 1024px 미만은 칩 줄 위 [순서 편집] → 시트에서 ↑ ↓ (옮길 때마다 바로 저장).
+- 앱 순서 바꾸기: 1024px 이상은 왼쪽 앱 열 마지막 카드 아래 [앱 순서 편집] → 끌어서 옮기기 → [완료], 1024px 미만은 칩 줄 위 [순서 편집] → 시트에서 ↑ ↓ (옮길 때마다 바로 저장).
 
 ## 첫 화면
 

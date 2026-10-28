@@ -21,7 +21,7 @@ interface AppColumnProps {
   editing: boolean;
   canEdit: boolean; // 서버 배치를 받았음 (아니면 [순서 편집] 비활성)
   onMove: (from: AppKey, to: AppKey) => void;
-  onStartEdit: () => void;                       // lg 이상 [순서 편집] → 기존 편집 모드
+  onStartEdit: () => void;                       // lg 이상 [앱 순서 편집] → 기존 편집 모드
   onFinishEdit: () => void;                      // lg 이상 [완료]
   onOpenSheet: (opener: HTMLElement) => void;    // lg 미만 [순서 편집] → 순서 편집 시트
 }
@@ -37,15 +37,8 @@ export default function AppColumn({
 
   return (
     <>
-      {/* 데스크톱: 세로 카드 */}
+      {/* 데스크톱: 세로 카드 (첫 카드 윗선을 가운데·오른쪽 첫 카드와 맞추려고 [앱 순서 편집]은 마지막 카드 아래) */}
       <div className="hidden lg:block">
-        <div className="flex justify-end mb-1.5">
-          {editing ? (
-            <OrderEditButton label="완료" icon="done" onClick={onFinishEdit} />
-          ) : (
-            <OrderEditButton label="순서 편집" icon="edit" disabled={!canEdit} onClick={onStartEdit} />
-          )}
-        </div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
@@ -55,6 +48,13 @@ export default function AppColumn({
             </div>
           </SortableContext>
         </DndContext>
+        <div className="flex justify-end mt-2">
+          {editing ? (
+            <OrderEditButton label="완료" icon="done" onClick={onFinishEdit} />
+          ) : (
+            <OrderEditButton label="앱 순서 편집" icon="edit" disabled={!canEdit} onClick={onStartEdit} />
+          )}
+        </div>
       </div>
 
       {/* 모바일: 가로 스크롤 칩 (줄 위 오른쪽에 [순서 편집] → 시트) */}
@@ -82,7 +82,8 @@ export default function AppColumn({
   );
 }
 
-// 앱 열 위 작은 회색 버튼 ([순서 편집] / 편집 중 [완료])
+// 앱 열의 작은 회색 버튼 (lg 이상: 마지막 카드 아래 [앱 순서 편집] / 편집 중 [완료], lg 미만: 칩 줄 위 [순서 편집])
+// 높이 28px 고정 — 편집 중 [완료]로 바뀌어도 아래가 밀리지 않는다
 function OrderEditButton({ label, icon, disabled, onClick, haspopup }: {
   label: string;
   icon: "edit" | "done";
