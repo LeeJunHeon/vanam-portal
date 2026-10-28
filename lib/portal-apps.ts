@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LayoutGrid, ListChecks, Package, Plane, QrCode, Search, Settings, Smartphone,
   Sparkles, Target, Users, Wind, Workflow, Wrench,
 } from "lucide-react";
-import { APP_KEYS, type AppKey } from "@/lib/launcher";
+import { type AppKey } from "@/lib/launcher";
 
 export interface PortalApp {
   key: AppKey;
@@ -124,7 +124,8 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
   },
 };
 
-export const DEFAULT_APP_ORDER: readonly AppKey[] = APP_KEYS;
+// 왼쪽 앱 기본 순서는 lib/launcher.ts 에 둔다 (launcher 가 portal-apps 를 import 하면 순환 참조)
+export { DEFAULT_APP_ORDER } from "@/lib/launcher";
 
 // 앱 portal-menus 의 아이콘 이름 → lucide 컴포넌트 (모르는 이름은 LayoutGrid)
 const MENU_ICONS: Record<string, LucideIcon> = {

@@ -4,6 +4,14 @@
 export const APP_KEYS = ["inventory", "equipment", "hr", "office", "process", "translator", "assistant"] as const;
 export type AppKey = (typeof APP_KEYS)[number];
 
+/**
+ * 왼쪽 앱 기본 순서 — 저장된 순서가 없을 때·[초기화] 후·저장된 순서에 빠진 앱을 뒤에 붙일 때 쓴다.
+ * APP_KEYS 는 키 검증·카탈로그 요청용 목록이고 화면 순서로는 쓰지 않는다.
+ */
+export const DEFAULT_APP_ORDER: readonly AppKey[] = [
+  "assistant", "inventory", "equipment", "hr", "office", "process", "translator",
+];
+
 export const MENU_KEY_RE = /^(inventory|equipment|hr|office|process|translator|assistant):[A-Za-z0-9_-]{1,64}(:[0-9]{1,9})?$/;
 export const PAGE_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -101,10 +109,11 @@ export function prefsFromStored(pinned: unknown, hidden: unknown, appOrder: unkn
   };
 }
 
-/** 앱 순서: appOrder 중 유효한 키를 먼저(중복 제거), 빠진 앱은 기본 순서로 뒤에. 항상 APP_KEYS 개수만큼. */
+/** 앱 순서: appOrder 중 유효한 키를 먼저(중복 제거), 빠진 앱은 기본 순서(DEFAULT_APP_ORDER)로 뒤에. 항상 APP_KEYS 개수만큼. */
 export function normalizeAppOrder(appOrder: readonly unknown[]): AppKey[] {
   const out = filterUnique([...appOrder], isAppKey, APP_KEYS.length) as AppKey[];
-  for (const k of APP_KEYS) if (!out.includes(k)) out.push(k);
+  // 기본 순서에 없는 키가 생겨도(APP_KEYS 에만 추가) 빠지지 않게 APP_KEYS 로 한 번 더 채운다
+  for (const k of [...DEFAULT_APP_ORDER, ...APP_KEYS]) if (!out.includes(k)) out.push(k);
   return out;
 }
 
