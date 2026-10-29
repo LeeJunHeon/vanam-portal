@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext, horizontalListSortingStrategy, useSortable, verticalListSortingStrategy,
@@ -24,11 +24,12 @@ interface AppColumnProps {
   onStartEdit: () => void;                       // lg 이상 [앱 순서 편집] → 기존 편집 모드
   onFinishEdit: () => void;                      // lg 이상 [완료]
   onOpenSheet: (opener: HTMLElement) => void;    // lg 미만 [순서 편집] → 순서 편집 시트
+  loadKey: string;                               // 배치 자료 출처(처음·캐시·서버)가 바뀔 때마다 달라지는 값 — 칩 줄 스크롤 초기화용
 }
 
 // 왼쪽 앱 열 (lg 이상: 세로 카드 / lg 미만: 가로 스크롤 칩)
 export default function AppColumn({
-  order, summaries, editing, canEdit, onMove, onStartEdit, onFinishEdit, onOpenSheet,
+  order, summaries, editing, canEdit, onMove, onStartEdit, onFinishEdit, onOpenSheet, loadKey,
 }: AppColumnProps) {
   const sensors = useLauncherSensors();
   const onDragEnd = (e: DragEndEvent) => {
@@ -67,7 +68,7 @@ export default function AppColumn({
           haspopup
         />
       </div>
-      <MobileAppRow>
+      <MobileAppRow resetKey={loadKey}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={horizontalListSortingStrategy}>
             <div className="flex gap-2 w-max pb-0.5">
@@ -109,9 +110,16 @@ function OrderEditButton({ label, icon, disabled, onClick, haspopup }: {
 
 // lg 미만 가로 스크롤 줄 + 좌우 넘침 안내(그라데이션·화살표 버튼)
 // 표시 여부는 마운트 뒤 scroll·ResizeObserver 로만 계산한다(서버 렌더와 첫 화면은 둘 다 숨김)
-function MobileAppRow({ children }: { children: React.ReactNode }) {
+function MobileAppRow({ children, resetKey }: { children: React.ReactNode; resetKey: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ left: false, right: false });
+
+  // 기본 순서로 먼저 그린 뒤 저장된 순서(캐시·서버)가 들어오면 칩이 재배치되는데, 브라우저가 처음 맞춰 둔 칩(snap)을
+  // 따라가 줄이 옆으로 밀린 채 보인다. 자료가 들어올 때(처음·캐시·서버)만 맨 앞으로 돌린다 — 사용자가 순서를 바꿀 때는 그대로.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = 0;
+  }, [resetKey]);
 
   useEffect(() => {
     const el = scrollRef.current;

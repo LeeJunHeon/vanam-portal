@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { ListChecks, X } from "lucide-react";
 import Toast from "@/components/portal/home/Toast";
-import { completeTask, type TodayData, type TodayTask, useAssistantToday } from "./useAssistantToday";
+import { completeTask, type TodayData, type TodayTask, undoTask, useAssistantToday } from "./useAssistantToday";
 import { type TaskActions, TodayBody, TodayHeader } from "./TodayView";
 import { TeamEventsSection } from "./TeamEvents";
 
@@ -11,6 +11,7 @@ import { TeamEventsSection } from "./TeamEvents";
 // 1024px 미만에서만 [내 할 일] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
 
 const TOAST_MS = 2500;
+const UNDO_MS = 5000; // "완료했습니다 [되돌리기]" 토스트
 const WIDE_QUERY = "(min-width: 1024px)"; // 이 폭부터는 오른쪽 열에 '내 할 일'이 보여 시트를 닫는다
 
 interface TodayContextValue {
@@ -31,7 +32,7 @@ export function useToday(): TodayContextValue | null {
 export default function TodayProvider({ children }: { children: React.ReactNode }) {
   const { data, loading, reload, dropTask } = useAssistantToday();
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; action?: { label: string; onClick: () => void } } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
@@ -44,6 +45,31 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
     try { localStorage.removeItem("portalTodayCollapsed"); } catch {}
   }, []);
 
+  const showToast = useCallback((message: string, ms = TOAST_MS, action?: { label: string; onClick: () => void }) => {
+    setToast({ message, action });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), ms);
+  }, []);
+
+  // [되돌리기]: 업무 관리 /undo 가 이전 상태로 돌린다 → today 를 다시 부른다(줄이 다시 나타난다)
+  const undoComplete = useCallback(async (task: TodayTask) => {
+    setToast(null);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    const { result, authLost } = await undoTask(task.id);
+    if (result === "done") {
+      reload();
+      return;
+    }
+    if (result === "changed") {
+      // 그 사이 다른 변경(AI·다른 화면)·10분 지남·없는 할 일 — 지금 상태로 다시 그린다
+      showToast("이미 바뀌어 되돌릴 수 없습니다. 업무 관리에서 확인하세요.");
+      reload();
+      return;
+    }
+    if (authLost) reload(); // 로그인 만료 등: 다시 불러 패널이 숨겨지게
+    showToast("되돌리지 못했습니다.");
+  }, [reload, showToast]);
+
   const onComplete = useCallback(async (task: TodayTask) => {
     setPending((cur) => new Set(cur).add(task.id));
     const { result, authLost } = await completeTask(task.id);
@@ -52,18 +78,18 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
       next.delete(task.id);
       return next;
     });
-    // done·gone(이미 처리됐거나 사라진 할 일)은 토스트 없이 줄을 지우고 다시 불러온다
+    // done·gone(이미 처리됐거나 사라진 할 일)은 줄을 지우고 다시 불러온다.
+    // done 만 "완료했습니다 [되돌리기]"(5초) — gone 은 다른 화면에서 이미 처리된 것이라 토스트 없음
     if (result !== "failed") {
       dropTask(task.id);
       reload();
+      if (result === "done") showToast("완료했습니다", UNDO_MS, { label: "되돌리기", onClick: () => void undoComplete(task) });
       return;
     }
     // 로그인 만료 등(401·403): 다시 불러 패널이 숨겨지게 한다
     if (authLost) reload();
-    setToast("완료 처리하지 못했습니다. 업무 관리에서 다시 시도하세요.");
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
-  }, [dropTask, reload]);
+    showToast("완료 처리하지 못했습니다. 업무 관리에서 다시 시도하세요.");
+  }, [dropTask, reload, showToast, undoComplete]);
 
   const openSheet = useCallback((el?: HTMLElement | null) => {
     opener.current = el ?? (document.activeElement as HTMLElement | null);
@@ -77,7 +103,7 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
     <TodayContext.Provider value={{ data, loading, actions, openSheet, sheetOpen }}>
       {children}
       {sheetOpen && data && <TodaySheet data={data} actions={actions} onClose={closeSheet} returnTo={opener} />}
-      <Toast message={toast} />
+      <Toast message={toast?.message ?? null} action={toast?.action} />
     </TodayContext.Provider>
   );
 }

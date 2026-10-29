@@ -283,3 +283,26 @@ export async function completeTask(id: string): Promise<CompleteOutcome> {
     return { result: "failed", authLost: false };
   }
 }
+
+/**
+ * 완료 되돌리기 결과 (POST /assistant/api/tasks/{id}/undo, 본문 없음)
+ * 서버가 '방금 사람이 바꾼 상태'인지·10분 안인지·그 사이 AI 변경이 없었는지 확인하고 정확히 이전 상태로 돌린다.
+ * - done: 되돌림(2xx)
+ * - changed: 이미 바뀌어 되돌릴 수 없음(409)·없는 할 일(404)
+ * - failed: 그 밖의 상태 코드·네트워크 오류 (401·403 이면 authLost)
+ */
+export type UndoResult = "done" | "changed" | "failed";
+
+export async function undoTask(id: string): Promise<{ result: UndoResult; authLost: boolean }> {
+  try {
+    const r = await fetch(`${BASE}/api/tasks/${encodeURIComponent(id)}/undo`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (r.ok) return { result: "done", authLost: false };
+    if (r.status === 404 || r.status === 409) return { result: "changed", authLost: false };
+    return { result: "failed", authLost: r.status === 401 || r.status === 403 };
+  } catch {
+    return { result: "failed", authLost: false };
+  }
+}

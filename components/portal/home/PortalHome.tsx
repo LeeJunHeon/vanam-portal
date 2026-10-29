@@ -156,6 +156,7 @@ export default function PortalHome() {
             onStartEdit={startEdit}
             onFinishEdit={finishEdit}
             onOpenSheet={openOrderSheet}
+            loadKey={`${launcher.ready}-${launcher.synced}`}
           />
         </aside>
 
