@@ -50,11 +50,25 @@ export interface TodayEvent {
   title: string;
 }
 
+/** 팀 일정 한 건 (today.team_events — 오늘과 앞으로 7일, 취소 제외, 시작 순 최대 12개) */
+export interface TeamEvent {
+  date: string;            // 시작 날짜 YYYY-MM-DD (KST). 오늘보다 앞이면 전부터 이어지는 일정
+  endDate: string | null;  // 끝 날짜 — 지금 응답에는 없다(end_date 가 오면 쓴다)
+  start: string | null;    // HH:MM, 종일이면 null
+  end: string | null;      // HH:MM, 종일이면 null
+  allDay: boolean;
+  title: string;           // 비공개면 업무 관리가 "일정 있음"으로 준다
+  location: string | null;
+  owners: string[];        // 주인 이름. 주인이 없으면 업무 관리가 ["회사"]로 준다
+  private: boolean;
+}
+
 export interface TodayData {
   date: string; // YYYY-MM-DD (KST)
   counts: { new: number; overdue: number; today: number; week: number; active: number; badge: number };
   tasks: TodayTask[];
   events: TodayEvent[];
+  teamEvents: TeamEvent[]; // 없거나 형식이 틀리면 빈 목록 (팀 일정 카드·칸을 숨긴다)
   status: { lastAnalysis: string | null; lastCollected: string | null; pendingItems: number; banner: TodayBanner | null };
 }
 
@@ -65,6 +79,36 @@ const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v)
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 const obj = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HM_RE = /^\d{2}:\d{2}$/;
+
+// 형식이 틀린 줄은 버린다(날짜 없음 등). 글자는 화면에서 텍스트로만 쓴다.
+function parseTeamEvents(v: unknown): TeamEvent[] {
+  if (!Array.isArray(v)) return [];
+  const out: TeamEvent[] = [];
+  for (const e of v) {
+    const o = obj(e);
+    const date = str(o.date);
+    if (!date || !DATE_RE.test(date)) continue;
+    const endDate = str(o.end_date);
+    const start = str(o.start);
+    const end = str(o.end);
+    const allDay = o.all_day === true;
+    out.push({
+      date,
+      endDate: endDate && DATE_RE.test(endDate) && endDate > date ? endDate : null,
+      start: !allDay && start && HM_RE.test(start) ? start : null,
+      end: !allDay && end && HM_RE.test(end) ? end : null,
+      allDay,
+      title: str(o.title) ?? (o.private === true ? "일정 있음" : "(제목 없음)"),
+      location: o.private === true ? null : str(o.location),
+      owners: Array.isArray(o.owners) ? o.owners.filter((n): n is string => typeof n === "string" && n.trim() !== "") : [],
+      private: o.private === true,
+    });
+  }
+  return out;
+}
 
 // 업무 관리 안의 경로만 링크로 쓴다(javascript: 등 다른 주소는 할 일 목록으로)
 function safeTaskUrl(v: unknown): string {
@@ -103,6 +147,7 @@ function parseToday(raw: unknown): TodayData | null {
     },
     tasks,
     events,
+    teamEvents: parseTeamEvents(d.team_events),
     status: {
       lastAnalysis: str(s.last_analysis),
       lastCollected: str(s.last_collected),

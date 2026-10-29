@@ -123,10 +123,20 @@ export function EmptyTasks() {
   return <p style={{ fontSize: "12px", color: "#9ca3af", padding: "6px 4px" }}>오늘 처리할 할 일이 없습니다.</p>;
 }
 
-/** 카드·시트 본문: 할 일 목록 · 오늘 일정 · 분석 상태 (건수·[전체 보기]는 머리에 있다) */
-export function TodayBody({ data, actions }: { data: TodayData; actions: TaskActions }) {
+/**
+ * 카드·시트 본문: 할 일 목록 · 오늘 일정 · (시트: 팀 일정 = extra) · 분석 상태 (건수·[전체 보기]는 머리에 있다)
+ * 설정 안내 상태면 안내 아래에 extra 를 둔다.
+ */
+export function TodayBody({ data, actions, extra }: { data: TodayData; actions: TaskActions; extra?: React.ReactNode }) {
   const { status } = data;
-  if (needsSetup(data)) return <SetupGuide />;
+  if (needsSetup(data)) {
+    return extra ? (
+      <div className="flex flex-col gap-4">
+        <SetupGuide />
+        {extra}
+      </div>
+    ) : <SetupGuide />;
+  }
   return (
     <div className="flex flex-col gap-4">
       <section aria-label="할 일 목록">
@@ -163,6 +173,8 @@ export function TodayBody({ data, actions }: { data: TodayData; actions: TaskAct
           </ul>
         </section>
       )}
+
+      {extra}
 
       <div
         className="flex items-center gap-1.5 flex-wrap"

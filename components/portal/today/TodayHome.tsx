@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { useToday } from "./TodayProvider";
 import { EmptyTasks, needsSetup, SetupGuide, TaskRow, TodayBody, TodayHeader } from "./TodayView";
 
@@ -64,7 +65,7 @@ export function TodayCard() {
   );
 }
 
-/** 1024px 미만: 첫 화면 맨 위 카드 — 할 일 3줄과 건수, [더 보기]는 시트 */
+/** 1024px 미만: 첫 화면 맨 위 카드 — 할 일 3줄과 건수, 팀 일정이 있으면 "팀 일정 N" 한 줄, [더 보기]는 시트 */
 export function TodayCompactCard() {
   const today = useToday();
   if (!today) return null;
@@ -94,6 +95,20 @@ export function TodayCompactCard() {
         <ul className="flex flex-col -mx-1">
           {data.tasks.slice(0, COMPACT_TASKS).map((t) => <TaskRow key={t.id} task={t} actions={actions} />)}
         </ul>
+      )}
+      {data.teamEvents.length > 0 && (
+        // 팀 일정은 시트 안 칸에서 본다(할 일·내 일정 아래)
+        <button
+          type="button"
+          onClick={(e) => today.openSheet(e.currentTarget)}
+          aria-haspopup="dialog"
+          className="flex items-center gap-1.5 rounded-lg hover:bg-gray-50 transition-colors -mx-1 px-1"
+          style={{ height: "32px", fontSize: "13px", color: "#374151" }}
+        >
+          <span className="font-medium">팀 일정</span>
+          <span className="tabular-nums font-semibold" style={{ color: "#0f766e" }}>{data.teamEvents.length}</span>
+          <ChevronRight size={14} className="ml-auto" style={{ color: "#9ca3af" }} aria-hidden />
+        </button>
       )}
       {!setup && (
         <button

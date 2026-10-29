@@ -5,6 +5,7 @@ import { ListChecks, X } from "lucide-react";
 import Toast from "@/components/portal/home/Toast";
 import { completeTask, type TodayData, type TodayTask, useAssistantToday } from "./useAssistantToday";
 import { type TaskActions, TodayBody, TodayHeader } from "./TodayView";
+import { TeamEventsSection } from "./TeamEvents";
 
 // 업무 관리 '내 할 일' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 카드·업무 관리 타일 요약이 같이 쓴다.
 // 1024px 미만에서만 [내 할 일] 버튼·[더 보기]로 시트를 연다(넓으면 가운데 최대 560px).
@@ -165,7 +166,11 @@ function TodaySheet({ data, actions, onClose, returnTo }: {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
-          <TodayBody data={data} actions={actions} />
+          <TodayBody
+            data={data}
+            actions={actions}
+            extra={<TeamEventsSection events={data.teamEvents} today={data.date} />}
+          />
         </div>
       </div>
     </div>
