@@ -295,7 +295,7 @@ async function runHealthChecks(): Promise<ContainersResult> {
     checkHttp("http://hr-nextjs:3000"),              // 인사관리
     checkHttp("http://office-web-nextjs:3000"),      // 경영지원
     checkHttp("http://process-web-nextjs:3000"),     // 공정관리
-    checkHttp(translatorHealthUrl),                  // 실시간 통역 (jensen Mac mini)
+    checkHttp(translatorHealthUrl),                  // 회의 관리 (jensen Mac mini)
     checkHttp(assistantHealthUrl),                   // 업무 관리 (vanam-db-net)
     checkTcp("inventory-web-postgres", 5432),        // postgres
   ]);

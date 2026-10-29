@@ -13,7 +13,7 @@
 | hr | 인사 관리 | /hr | http://hr-nextjs:3000 |
 | office | 경영 지원 (admin·CEO 전용) | /office | http://office-web-nextjs:3000 |
 | process | 공정 관리 | /process | http://process-web-nextjs:3000 |
-| translator | 실시간 통역 | /translator | `TRANSLATOR_HEALTH_URL` (기본 http://192.168.0.83:8790/translator/healthz) |
+| translator | 회의 관리 | /translator | `TRANSLATOR_HEALTH_URL` (기본 http://192.168.0.83:8790/translator/healthz) |
 | assistant | 업무 관리 | /assistant | `ASSISTANT_HEALTH_URL` (기본 http://ai-assistant-web:8000/assistant/healthz) |
 
 - 업무 관리는 Python 앱(NAS 컨테이너 `ai-assistant-web:8000`)이다. 포털 로그인 쿠키로 인사 앱 `/hr/api/me` 를 확인해 로그인하고, `portal-menus`(할 일·내 업무 메모)와 `?page=tasks|memo` 딥링크, 로그인 없는 `GET /assistant/healthz` 를 제공한다. `/api/portal-summary` 대신 `GET /assistant/api/today` 를 브라우저에서 불러 앱 카드 요약(신규·오늘 마감·진행)과 첫 화면 '내 할 일' 카드에 쓴다(401·403·오류면 설명 문구만 나오고 '내 할 일' 카드는 숨긴다).

@@ -1,9 +1,9 @@
 // 포털 앱 정보 — 앱 열(왼쪽 카드)과 런처가 같이 쓴다
 import {
   type LucideIcon,
-  Award, BarChart3, Briefcase, Building2, Calendar, CalendarCheck, CalendarDays, CheckSquare,
+  Award, BarChart3, BookOpen, Briefcase, Building2, Calendar, CalendarCheck, CalendarDays, CheckSquare,
   ClipboardList, Clock, Cpu, Droplet, FileText, Gauge, History, Home, IdCard, Languages, Layers,
-  LayoutDashboard, LayoutGrid, ListChecks, Package, Plane, QrCode, Search, Settings, Smartphone,
+  LayoutDashboard, LayoutGrid, ListChecks, Mic, NotebookPen, Package, Plane, QrCode, Search, Settings, Smartphone,
   Sparkles, Target, Users, Wind, Workflow, Wrench,
 } from "lucide-react";
 import { type AppKey } from "@/lib/launcher";
@@ -96,11 +96,11 @@ export const PORTAL_APPS: Record<AppKey, PortalApp> = {
   },
   translator: {
     key: "translator",
-    name: "실시간 통역",
-    short: "통역",
+    name: "회의 관리",
+    short: "회의",
     base: "/translator",
-    description: "해외 미팅 한↔영 실시간 통역",
-    icon: Languages,
+    description: "회의 기록·회의록 요약, 필요할 때 한↔영 통역",
+    icon: NotebookPen,
     iconBgColor: "#ecfeff",
     iconColor: "#0891b2",
     tileBg: "#cffafe",
@@ -132,7 +132,7 @@ const MENU_ICONS: Record<string, LucideIcon> = {
   Home, Package, BarChart3, Clock, QrCode, Search, Layers, Target, Droplet, Building2, Users,
   FileText, Wrench, Wind, Sparkles, Settings, Cpu, Calendar, Plane, CheckSquare, CalendarDays,
   CalendarCheck, Smartphone, Award, IdCard, LayoutDashboard, ListChecks, ClipboardList, History,
-  Gauge, Languages,
+  Gauge, Languages, Mic, BookOpen,
 };
 
 export function menuIcon(name: string): LucideIcon {
