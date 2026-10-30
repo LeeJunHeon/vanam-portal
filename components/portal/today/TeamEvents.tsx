@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
+import { type KstNow, isPastTimed, PAST_COLOR, timeColStyle, useNowHm } from "./timeColumn";
 import { formatTodayDate } from "./TodayView";
 import type { TeamEvent, TodayData } from "./useAssistantToday";
 
@@ -58,25 +59,26 @@ export function teamEventTime(e: TeamEvent, today: string): string {
   return e.start ?? "";
 }
 
-function TeamEventRow({ event, today }: { event: TeamEvent; today: string }) {
+// 줄: 시간 칸(고정 폭) · 제목 · 장소. 오늘 시각 일정이 지났으면 모두 흐린 회색
+function TeamEventRow({ event, today, now }: { event: TeamEvent; today: string; now: KstNow | null }) {
   const time = teamEventTime(event, today);
+  const timed = !event.allDay && !event.endDate && event.date === today; // 오늘 시작·끝나는 시각 일정
+  const past = timed && isPastTimed(event.start, event.end, today, now);
+  const kind = event.allDay || event.endDate || event.date < today ? "span" : "time";
   return (
     <li className="flex items-center gap-1.5 min-w-0" style={{ fontSize: "12px", minHeight: "24px" }}>
-      <span
-        className="flex-shrink-0 tabular-nums whitespace-nowrap"
-        style={{ minWidth: "38px", color: event.allDay || event.endDate ? "#0f766e" : "#6b7280", fontWeight: 500 }}
-      >
+      <span className="flex-shrink-0 tabular-nums whitespace-nowrap" style={timeColStyle(kind, past)}>
         {time}
       </span>
       <span
         className="truncate min-w-0"
-        style={{ color: event.private ? "#9ca3af" : "#1f2937" }}
+        style={{ color: past || event.private ? PAST_COLOR : "#1f2937" }}
         title={event.title}
       >
         {event.title}
       </span>
       {event.location && (
-        <span className="truncate flex-shrink min-w-0" style={{ fontSize: "11px", color: "#9ca3af", maxWidth: "35%" }} title={event.location}>
+        <span className="truncate flex-shrink min-w-0" style={{ fontSize: "11px", color: PAST_COLOR, maxWidth: "35%" }} title={event.location}>
           {event.location}
         </span>
       )}
@@ -87,6 +89,7 @@ function TeamEventRow({ event, today }: { event: TeamEvent; today: string }) {
 /** 날짜 제목으로 묶은 목록 (카드·시트가 같이 쓴다) */
 function TeamEventList({ events, today, max }: { events: TeamEvent[]; today: string; max?: number }) {
   const groups = groupTeamEvents(events, today, max);
+  const now = useNowHm();
   return (
     <div className="flex flex-col gap-2.5">
       {groups.map((g) => (
@@ -95,7 +98,7 @@ function TeamEventList({ events, today, max }: { events: TeamEvent[]; today: str
             {g.today ? "오늘" : formatTodayDate(g.date)}
           </h4>
           <ul className="flex flex-col">
-            {g.events.map((e, i) => <TeamEventRow key={i} event={e} today={today} />)}
+            {g.events.map((e, i) => <TeamEventRow key={i} event={e} today={today} now={now} />)}
           </ul>
         </div>
       ))}

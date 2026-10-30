@@ -2,7 +2,8 @@
 
 import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
-import type { TodayData, TodayTask } from "./useAssistantToday";
+import { isPastTimed, PAST_COLOR, timeColStyle, useNowHm } from "./timeColumn";
+import type { TodayData, TodayEvent, TodayTask } from "./useAssistantToday";
 
 // 업무 관리 '내 할 일' 카드 조각 — 오른쪽 열 카드·좁은 화면 맨 위 카드·시트가 같이 쓴다
 // 글자는 모두 React 텍스트로만 넣는다(HTML 로 해석하지 않음)
@@ -17,6 +18,8 @@ const BANNER_TEXT = {
   connect: "수집 연결 필요",
   setup: "처음 설정 필요",
 } as const;
+
+const BADGE_COL_WIDTH = "44px"; // 가장 긴 배지 "11-04"(10px 글씨 + 좌우 여백 6px, 실제 약 42px)가 들어가는 폭
 
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -46,13 +49,17 @@ function TaskBadge({ task }: { task: TodayTask }) {
     : task.group === "new" ? { text: "신규", bg: "#dbeafe", fg: "#2563eb" }
     : task.due ? { text: task.due.slice(5, 10), bg: "#f3f4f6", fg: "#6b7280" }
     : null;
-  if (!badge) return null;
+  // 배지 자리는 고정 폭 칸(배지가 없어도 빈 칸) — 모든 제목이 같은 위치에서 시작한다
   return (
-    <span
-      className="rounded-full font-semibold flex-shrink-0 tabular-nums"
-      style={{ fontSize: "10px", padding: "1px 6px", backgroundColor: badge.bg, color: badge.fg }}
-    >
-      {badge.text}
+    <span className="flex-shrink-0 flex items-center" style={{ width: BADGE_COL_WIDTH }}>
+      {badge && (
+        <span
+          className="rounded-full font-semibold tabular-nums whitespace-nowrap"
+          style={{ fontSize: "10px", padding: "1px 6px", backgroundColor: badge.bg, color: badge.fg }}
+        >
+          {badge.text}
+        </span>
+      )}
     </span>
   );
 }
@@ -119,6 +126,26 @@ export function SetupGuide({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// 오늘 일정 줄: 팀 일정과 같은 시간 칸(고정 폭·색). 응답에 끝 시각이 없어 시작 시각이 지나면 흐리게
+function TodayEventList({ events, today }: { events: TodayEvent[]; today: string }) {
+  const now = useNowHm();
+  return (
+    <ul className="flex flex-col gap-1">
+      {events.map((e, i) => {
+        const past = !e.allDay && isPastTimed(e.start, null, today, now);
+        return (
+          <li key={i} className="flex items-center gap-1.5 min-w-0" style={{ fontSize: "12px" }}>
+            <span className="flex-shrink-0 tabular-nums whitespace-nowrap" style={timeColStyle(e.allDay ? "span" : "time", past)}>
+              {e.allDay ? "종일" : (e.start ?? "")}
+            </span>
+            <span className="truncate" style={{ color: past ? PAST_COLOR : "#1f2937" }} title={e.title}>{e.title}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function EmptyTasks() {
   return <p style={{ fontSize: "12px", color: "#9ca3af", padding: "6px 4px" }}>오늘 처리할 할 일이 없습니다.</p>;
 }
@@ -158,19 +185,8 @@ export function TodayBody({ data, actions, extra }: { data: TodayData; actions: 
             </span>
             <span className="ml-auto" style={{ fontSize: "10px", color: "#9ca3af" }}>04:00 기준</span>
           </div>
-          <ul className="flex flex-col gap-1">
-            {data.events.map((e, i) => (
-              <li key={i} className="flex items-center gap-2 min-w-0" style={{ fontSize: "12px" }}>
-                <span
-                  className="flex-shrink-0 tabular-nums"
-                  style={{ width: "38px", color: e.allDay ? "#0f766e" : "#6b7280", fontWeight: 500 }}
-                >
-                  {e.allDay ? "종일" : (e.start ?? "")}
-                </span>
-                <span className="truncate" style={{ color: "#1f2937" }} title={e.title}>{e.title}</span>
-              </li>
-            ))}
-          </ul>
+          <TodayEventList events={data.events} today={data.date} />
+
         </section>
       )}
 
