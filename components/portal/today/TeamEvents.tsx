@@ -11,7 +11,6 @@ import type { TeamEvent, TodayData } from "./useAssistantToday";
 
 const TEAM_URL = `${PORTAL_APPS.assistant.base}/?page=team`;
 const CARD_MAX_ROWS = 8;
-const COMPANY = "회사"; // 주인이 없는 일정 — 업무 관리가 owners ["회사"]로 준다
 
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -59,14 +58,7 @@ export function teamEventTime(e: TeamEvent, today: string): string {
   return e.start ?? "";
 }
 
-/** 주인 칩 글자: 여러 명이면 "A·B", 없거나 회사 일정이면 "회사" */
-export function ownerLabel(e: TeamEvent): { text: string; company: boolean } {
-  const names = e.owners.filter((n) => n !== COMPANY);
-  return names.length === 0 ? { text: COMPANY, company: true } : { text: names.join("·"), company: false };
-}
-
 function TeamEventRow({ event, today }: { event: TeamEvent; today: string }) {
-  const owner = ownerLabel(event);
   const time = teamEventTime(event, today);
   return (
     <li className="flex items-center gap-1.5 min-w-0" style={{ fontSize: "12px", minHeight: "24px" }}>
@@ -75,17 +67,6 @@ function TeamEventRow({ event, today }: { event: TeamEvent; today: string }) {
         style={{ minWidth: "38px", color: event.allDay || event.endDate ? "#0f766e" : "#6b7280", fontWeight: 500 }}
       >
         {time}
-      </span>
-      <span
-        className="flex-shrink-0 truncate rounded-full font-semibold"
-        style={{
-          maxWidth: "96px", fontSize: "10px", padding: "1px 6px",
-          backgroundColor: owner.company ? "#f3f4f6" : "#ccfbf1",
-          color: owner.company ? "#6b7280" : "#0f766e",
-        }}
-        title={owner.text}
-      >
-        {owner.text}
       </span>
       <span
         className="truncate min-w-0"
