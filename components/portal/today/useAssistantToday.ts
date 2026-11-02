@@ -44,31 +44,30 @@ export interface TodayTask {
   url: string;
 }
 
-export interface TodayEvent {
-  start: string | null; // HH:MM, 종일이면 null
-  allDay: boolean;
-  title: string;
-}
-
-/** 팀 일정 한 건 (today.team_events — 오늘과 앞으로 7일, 취소 제외, 시작 순 최대 12개) */
-export interface TeamEvent {
-  date: string;            // 시작 날짜 YYYY-MM-DD (KST). 오늘보다 앞이면 전부터 이어지는 일정
-  endDate: string | null;  // 끝 날짜 — 지금 응답에는 없다(end_date 가 오면 쓴다)
+/** 일정 한 건 (today.schedule.events — 내 일정·팀 일정, 날짜 띠 7일 안에 걸치는 것) */
+export interface ScheduleEvent {
+  date: string;            // 시작 날짜 YYYY-MM-DD (KST)
+  endDate: string | null;  // 여러 날이면 마지막 날(포함), 하루 일정이면 null
   start: string | null;    // HH:MM, 종일이면 null
   end: string | null;      // HH:MM, 종일이면 null
   allDay: boolean;
-  title: string;           // 비공개면 업무 관리가 "일정 있음"으로 준다
+  title: string;           // 비공개 팀 일정이면 업무 관리가 "일정 있음"으로 준다
   location: string | null;
-  owners: string[];        // 주인 이름. 주인이 없으면 업무 관리가 ["회사"]로 준다
+  mine: boolean;           // 내 일정('내 일정' 배지)
   private: boolean;
+}
+
+/** 일정 탭: 날짜 띠 7일(첫 칸 = 오늘)과 그 안에 걸치는 일정 */
+export interface Schedule {
+  days: string[]; // YYYY-MM-DD 7개
+  events: ScheduleEvent[];
 }
 
 export interface TodayData {
   date: string; // YYYY-MM-DD (KST)
   counts: { new: number; overdue: number; today: number; week: number; active: number; badge: number };
   tasks: TodayTask[];
-  events: TodayEvent[];
-  teamEvents: TeamEvent[]; // 없거나 형식이 틀리면 빈 목록 (팀 일정 카드·칸을 숨긴다)
+  schedule: Schedule; // schedule 이 없는 이전 업무 관리 응답이면 events(오늘 내 일정)·team_events 로 만든다
   status: { lastAnalysis: string | null; lastCollected: string | null; pendingItems: number; banner: TodayBanner | null };
 }
 
@@ -83,31 +82,59 @@ const obj = (v: unknown): Record<string, unknown> =>
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HM_RE = /^\d{2}:\d{2}$/;
 
-// 형식이 틀린 줄은 버린다(날짜 없음 등). 글자는 화면에서 텍스트로만 쓴다.
-function parseTeamEvents(v: unknown): TeamEvent[] {
-  if (!Array.isArray(v)) return [];
-  const out: TeamEvent[] = [];
-  for (const e of v) {
-    const o = obj(e);
-    const date = str(o.date);
-    if (!date || !DATE_RE.test(date)) continue;
-    const endDate = str(o.end_date);
-    const start = str(o.start);
-    const end = str(o.end);
-    const allDay = o.all_day === true;
-    out.push({
-      date,
-      endDate: endDate && DATE_RE.test(endDate) && endDate > date ? endDate : null,
-      start: !allDay && start && HM_RE.test(start) ? start : null,
-      end: !allDay && end && HM_RE.test(end) ? end : null,
-      allDay,
-      title: str(o.title) ?? (o.private === true ? "일정 있음" : "(제목 없음)"),
-      location: o.private === true ? null : str(o.location),
-      owners: Array.isArray(o.owners) ? o.owners.filter((n): n is string => typeof n === "string" && n.trim() !== "") : [],
-      private: o.private === true,
-    });
+const DAY_COUNT = 7; // 날짜 띠 칸 수
+
+/** "2026-11-02" + n일 (시간대와 무관하게 날짜만 계산) */
+export function addDays(date: string, n: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// 일정 한 건. 형식이 틀리면(날짜 없음 등) null. mine 은 응답 값이 없을 때 쓸 기본값. 글자는 화면에서 텍스트로만 쓴다.
+function parseScheduleEvent(e: unknown, mine: boolean): ScheduleEvent | null {
+  const o = obj(e);
+  const date = str(o.date);
+  if (!date || !DATE_RE.test(date)) return null;
+  const endDate = str(o.end_date);
+  const start = str(o.start);
+  const end = str(o.end);
+  const allDay = o.all_day === true;
+  const priv = o.private === true;
+  return {
+    date,
+    endDate: endDate && DATE_RE.test(endDate) && endDate > date ? endDate : null,
+    start: !allDay && start && HM_RE.test(start) ? start : null,
+    end: !allDay && end && HM_RE.test(end) ? end : null,
+    allDay,
+    title: str(o.title) ?? (priv ? "일정 있음" : "(제목 없음)"),
+    location: priv ? null : str(o.location),
+    mine: typeof o.mine === "boolean" ? o.mine : mine,
+    private: priv,
+  };
+}
+
+/**
+ * today.schedule → Schedule. schedule 이 없으면(업무 관리 이전 버전) events(오늘 내 일정, 시작 시각만)와
+ * team_events(팀 일정)로 같은 형식을 만든다. 오늘 전에 시작해 끝 날짜가 없는 팀 일정은 오늘까지 걸친 것으로 본다.
+ */
+function parseSchedule(d: Record<string, unknown>, today: string): Schedule {
+  const fallbackDays = Array.from({ length: DAY_COUNT }, (_, i) => addDays(today, i));
+  const s = obj(d.schedule);
+  if (Array.isArray(s.events)) {
+    const days = Array.isArray(s.days)
+      ? s.days.map((x) => (typeof x === "string" ? x : str(obj(x).date))).filter((x): x is string => !!x && DATE_RE.test(x))
+      : [];
+    return {
+      days: days.length === DAY_COUNT ? days : fallbackDays,
+      events: s.events.map((e) => parseScheduleEvent(e, false)).filter((e): e is ScheduleEvent => e !== null),
+    };
   }
-  return out;
+  const mine = (Array.isArray(d.events) ? d.events : [])
+    .map((e) => parseScheduleEvent({ ...obj(e), date: today, end: null }, true));
+  const team = (Array.isArray(d.team_events) ? d.team_events : [])
+    .map((e) => parseScheduleEvent(e, false))
+    .map((e) => (e && e.date < today && !e.endDate ? { ...e, endDate: today } : e));
+  return { days: fallbackDays, events: [...mine, ...team].filter((e): e is ScheduleEvent => e !== null) };
 }
 
 // 업무 관리 안의 경로만 링크로 쓴다(javascript: 등 다른 주소는 할 일 목록으로)
@@ -135,10 +162,6 @@ function parseToday(raw: unknown): TodayData | null {
       url: safeTaskUrl(o.url),
     });
   }
-  const events: TodayEvent[] = (Array.isArray(d.events) ? d.events : []).map((e) => {
-    const o = obj(e);
-    return { start: str(o.start), allDay: o.all_day === true, title: str(o.title) ?? "(제목 없음)" };
-  });
   return {
     date,
     counts: {
@@ -146,8 +169,7 @@ function parseToday(raw: unknown): TodayData | null {
       week: num(c.week), active: num(c.active), badge: num(c.badge),
     },
     tasks,
-    events,
-    teamEvents: parseTeamEvents(d.team_events),
+    schedule: parseSchedule(d, date),
     status: {
       lastAnalysis: str(s.last_analysis),
       lastCollected: str(s.last_collected),

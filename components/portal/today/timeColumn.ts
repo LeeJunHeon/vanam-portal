@@ -2,37 +2,16 @@
 
 import { useSyncExternalStore } from "react";
 
-// '내 할 일'·'오늘 일정'·'팀 일정' 줄이 같이 쓰는 왼쪽 칸·줄 높이·글씨 규칙과 KST 현재 시각
+// '내 업무' 카드의 할 일·일정 줄이 같이 쓰는 줄 높이·칸 폭·색과 KST 현재 시각
 
-/** 시간 칸 폭 — 가장 긴 표시 "10-30~11-02"(12px, tabular-nums, 실제 약 77px)가 들어가는 값. 모든 줄의 제목 시작 위치가 같다 */
-export const TIME_COL_WIDTH = "80px";
-/** 모든 줄의 왼쪽 칸 폭 — 할 일 줄은 체크박스(36px) + 배지(44px), 일정 줄은 시간 글자. 시간 칸과 같은 값 */
-export const LEFT_COL_WIDTH = TIME_COL_WIDTH;
-/** 할 일 줄 왼쪽 칸 안 체크박스 자리(눌리는 영역, 줄 높이 전체) */
+/** 줄 높이: 1024px 이상 32px, 미만 36px. 아래 0.5px 구분선(목록의 마지막 줄은 없음) */
+export const ROW_CLASS = "h-9 lg:h-8 border-b-[0.5px] border-[#f3f4f6] last:border-b-0";
+/** 할 일 줄 체크박스 자리(눌리는 영역, 36px × 줄 높이) */
 export const CHECK_COL_WIDTH = "36px";
-/** 왼쪽 칸과 제목 사이(gap-1.5 = 6px). 제목 시작 위치 = 왼쪽 칸 + 이 값 */
-export const TITLE_GAP_CLASS = "gap-1.5";
-/** 제목 시작 위치 — "+ N개 더" 줄을 여기에 맞춘다 */
-export const TITLE_OFFSET = `calc(${LEFT_COL_WIDTH} + 6px)`;
-/** 줄 높이: 1024px 이상 32px, 미만 36px */
-export const ROW_CLASS = "h-9 lg:h-8";
+/** 일정 줄 시간 칸("종일"·"HH:MM", 12px) */
+export const TIME_COL_WIDTH = "48px";
 
-export const PAST_COLOR = "#9ca3af"; // 지난 일정: 시간 칸·제목·장소
-
-/** 제목 글씨(할 일·오늘 일정·팀 일정 공통). 지난 일정은 흐린 회색 */
-export function titleStyle(past = false): React.CSSProperties {
-  return { fontSize: "13px", color: past ? PAST_COLOR : "#1f2937" };
-}
-
-/** 시간 칸 글자 모양: 종일·여러 날·이어지는 일정은 짙은 회색, 시각(HH:MM)은 회색. 지난 일정은 흐린 회색 */
-export function timeColStyle(kind: "span" | "time", past = false): React.CSSProperties {
-  return {
-    width: TIME_COL_WIDTH,
-    fontSize: "12px",
-    color: past ? PAST_COLOR : kind === "span" ? "#374151" : "#6b7280",
-    fontWeight: kind === "span" ? 500 : 400,
-  };
-}
+export const PAST_COLOR = "#9ca3af"; // 지난 일정: 시간 칸·제목
 
 /** KST 현재 날짜·시각 "YYYY-MM-DD HH:MM" (브라우저 시간대와 무관) */
 const KST_FORMAT = new Intl.DateTimeFormat("en-CA", {

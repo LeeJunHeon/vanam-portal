@@ -11,9 +11,8 @@ import ActivityLog from "@/components/portal/ActivityLog";
 import ServerStatus from "@/components/portal/ServerStatus";
 import AlertPanel from "@/components/portal/AlertPanel";
 import { useToday } from "@/components/portal/today/TodayProvider";
-import { TodayCard, TodayCompactCard } from "@/components/portal/today/TodayHome";
 import { needsSetup } from "@/components/portal/today/TodayView";
-import { TeamEventsCard } from "@/components/portal/today/TeamEvents";
+import WorkCard from "@/components/portal/today/WorkCard";
 import AppColumn from "./AppColumn";
 import FavoritesSection from "./FavoritesSection";
 import FrequentSection from "./FrequentSection";
@@ -29,7 +28,7 @@ import { useNasStatus } from "./useNasStatus";
 const TOAST_MS = 2500;
 
 // 포털 첫 화면(3단, 가운데 정렬): 왼쪽 앱 열 · 가운데 런처(즐겨찾기·자주 쓰는 메뉴·전체 메뉴)와 활동 로그
-// · 오른쪽 열(업무 관리 '내 할 일' → 팀 일정(있을 때만) → 알림 → 서버 상태, 같은 폭). 1024px 미만은 '내 할 일'을 맨 위 카드로
+// · 오른쪽 열(업무 관리 '내 업무' → 알림 → 서버 상태, 같은 폭). 1024px 미만은 '내 업무' 카드를 맨 위에(같은 컴포넌트·같은 모양)
 export default function PortalHome() {
   // 서버 상태는 여기서 한 번만 불러 서버 상태 카드와 앱 카드 뱃지가 같이 쓴다
   const nas = useNasStatus();
@@ -144,7 +143,7 @@ export default function PortalHome() {
   return (
     <>
       <div className="flex flex-col lg:flex-row gap-4 mx-auto pt-[72px] pb-8 px-4 sm:px-5 max-w-[1420px]">
-        <TodayCompactCard />
+        <WorkCard placement="top" />
 
         <aside className="lg:w-[220px] lg:flex-shrink-0 min-w-0" aria-label="앱">
           <AppColumn
@@ -198,8 +197,7 @@ export default function PortalHome() {
         </main>
 
         <aside className="flex flex-col gap-4 lg:w-[310px] lg:flex-shrink-0 min-w-0">
-          <TodayCard />
-          <TeamEventsCard data={today} />
+          <WorkCard placement="side" />
           <AlertPanel data={nas.data} stale={nas.stale} />
           <ServerStatus data={nas.data} stale={nas.stale} />
         </aside>

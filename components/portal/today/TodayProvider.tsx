@@ -6,24 +6,25 @@ import Toast from "@/components/portal/home/Toast";
 import { completeTask, type TodayData, type TodayTask, undoTask, useAssistantToday } from "./useAssistantToday";
 import type { TaskActions } from "./TodayView";
 
-// 업무 관리 '내 할 일' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 오른쪽 열 카드·좁은 화면 맨 위 카드·업무 관리 타일 요약이 같이 쓴다.
-// 1024px 미만 맨 위 카드는 팝업 없이 제자리에서 펼친다(compactExpanded, 저장하지 않아 처음 열 때 항상 접힘).
+// 업무 관리 '오늘' 공유 상태: 상단바 [내 할 일] 버튼·첫 화면 '내 업무' 카드·업무 관리 타일 요약이 같이 쓴다.
+// 카드의 선택 탭(할 일·일정)도 여기 둔다 — 상단바 버튼이 '할 일' 탭을 고르고, 저장하지 않는다.
 
 const TOAST_MS = 2500;
 const UNDO_MS = 5000; // "완료했습니다 [되돌리기]" 토스트
 
-/** 1024px 미만 맨 위 카드와 그 머리글 id (상단바 버튼의 aria-controls·이동 대상) */
-export const COMPACT_CARD_ID = "today-compact";
-export const COMPACT_TITLE_ID = "today-compact-title";
+/** 1024px 미만 '내 업무' 카드 id (상단바 버튼의 aria-controls·이동 대상) */
+export const WORK_CARD_ID = "my-work";
+
+export type WorkTab = "tasks" | "schedule";
 
 interface TodayContextValue {
   data: TodayData | null;
   loading: boolean; // 응답·저장분을 기다리는 중(자리표시)
   actions: TaskActions;
-  compactExpanded: boolean;
-  setCompactExpanded: (open: boolean) => void;
-  /** 상단바 버튼: 맨 위 카드를 펼치고 머리글로 스크롤한 뒤 머리글에 포커스 */
-  expandCompact: () => void;
+  tab: WorkTab;
+  setTab: (tab: WorkTab) => void;
+  /** 상단바 버튼: '할 일' 탭을 고르고 카드로 스크롤한 뒤 그 탭에 포커스 */
+  showTasks: () => void;
 }
 
 const TodayContext = createContext<TodayContextValue | null>(null);
@@ -33,20 +34,16 @@ export function useToday(): TodayContextValue | null {
   return useContext(TodayContext);
 }
 
-/** 맨 위 카드 머리글이 화면 위(고정 상단바 아래)에 오도록 스크롤. 움직임 줄이기 설정이면 즉시 이동 */
-export function scrollToCompactCard(): void {
-  const card = document.getElementById(COMPACT_CARD_ID);
-  if (!card) return;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  card.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
-}
 
 export default function TodayProvider({ children }: { children: React.ReactNode }) {
   const { data, loading, reload, dropTask } = useAssistantToday();
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; action?: { label: string; onClick: () => void } } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [compactExpanded, setCompactExpanded] = useState(false);
+  const [tabChoice, setTab] = useState<WorkTab | null>(null);
+  // 처음 여는 탭은 자료가 처음 들어올 때 정한다: 할 일이 있으면 '할 일', 없으면 '일정' (렌더 중 한 번만 바꾼다)
+  if (tabChoice === null && data) setTab(data.tasks.length > 0 ? "tasks" : "schedule");
+  const tab = tabChoice ?? "tasks";
 
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -102,19 +99,22 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
     showToast("완료 처리하지 못했습니다. 업무 관리에서 다시 시도하세요.");
   }, [dropTask, reload, showToast, undoComplete]);
 
-  const expandCompact = useCallback(() => {
-    setCompactExpanded(true);
-    // 펼친 화면이 그려진 뒤 이동·포커스(포커스로 다시 스크롤되지 않게 preventScroll)
+  const showTasks = useCallback(() => {
+    setTab("tasks");
+    // 탭이 바뀐 화면이 그려진 뒤 이동·포커스(포커스로 다시 스크롤되지 않게 preventScroll). 움직임 줄이기 설정이면 즉시 이동
     requestAnimationFrame(() => {
-      scrollToCompactCard();
-      document.getElementById(COMPACT_TITLE_ID)?.focus({ preventScroll: true });
+      const card = document.getElementById(WORK_CARD_ID);
+      if (!card) return;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      card.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+      card.querySelector<HTMLElement>('[role="tab"][data-tab="tasks"]')?.focus({ preventScroll: true });
     });
   }, []);
 
   const actions: TaskActions = { pending, onComplete: (t) => void onComplete(t) };
 
   return (
-    <TodayContext.Provider value={{ data, loading, actions, compactExpanded, setCompactExpanded, expandCompact }}>
+    <TodayContext.Provider value={{ data, loading, actions, tab, setTab, showTasks }}>
       {children}
       <Toast message={toast?.message ?? null} action={toast?.action} />
     </TodayContext.Provider>
@@ -122,7 +122,7 @@ export default function TodayProvider({ children }: { children: React.ReactNode 
 }
 
 /**
- * 상단바 [내 할 일 N] 버튼(1024px 미만) — 첫 화면 맨 위 카드를 펼치고 그 머리글로 이동한다.
+ * 상단바 [내 할 일 N] 버튼(1024px 미만) — 첫 화면 '내 업무' 카드로 이동해 '할 일' 탭을 고르고 그 탭에 포커스한다.
  * 1024px 이상에서는 오른쪽 열에 카드가 보이므로 숨긴다. 640px 미만은 글자가 길어 아이콘 + 숫자만 보인다.
  */
 export function TodayButton() {
@@ -132,9 +132,8 @@ export function TodayButton() {
   return (
     <button
       type="button"
-      onClick={today.expandCompact}
-      aria-controls={COMPACT_CARD_ID}
-      aria-expanded={today.compactExpanded}
+      onClick={today.showTasks}
+      aria-controls={WORK_CARD_ID}
       aria-label={n > 0 ? `내 할 일 ${n}건` : "내 할 일"}
       title="내 할 일"
       className="lg:hidden flex items-center gap-1 px-2 sm:px-2.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700 font-semibold whitespace-nowrap"
