@@ -1,21 +1,19 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
-import { type KstNow, isPastTimed, PAST_COLOR, timeColStyle, useNowHm } from "./timeColumn";
-import { formatTodayDate } from "./TodayView";
+import {
+  type KstNow, isPastTimed, PAST_COLOR, ROW_CLASS, TITLE_GAP_CLASS, timeColStyle, titleStyle, useNowHm,
+} from "./timeColumn";
+import { formatTodayDate, MoreLine, SectionHeader } from "./TodayView";
 import type { TeamEvent, TodayData } from "./useAssistantToday";
 
-// 업무 관리 '팀 일정'(today.team_events): 1024px 이상 오른쪽 열 '내 할 일' 아래 카드 · 1024px 미만은 '내 할 일' 시트 안 칸
-// 오늘 일정을 먼저, 그 아래 앞으로 며칠을 날짜 제목으로 묶는다. 목록이 비면 카드·칸을 숨긴다(오류 문구 없음).
+// 업무 관리 '팀 일정'(today.team_events): 1024px 이상 오른쪽 열 '내 할 일' 아래 카드 · 1024px 미만 맨 위 카드 안 섹션
+// 오늘 일정을 먼저, 그 아래 앞으로 며칠을 날짜 제목으로 묶는다. 목록이 비면 카드·섹션을 숨긴다(오류 문구 없음).
+// 줄은 '내 할 일'과 같은 구조(왼쪽 칸 = 시간 80px · 제목 · 장소)
 // 글자는 모두 React 텍스트로만 넣는다(HTML 로 해석하지 않음)
 
-const TEAM_URL = `${PORTAL_APPS.assistant.base}/?page=team`;
+export const TEAM_URL = `${PORTAL_APPS.assistant.base}/?page=team`;
 const CARD_MAX_ROWS = 8;
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontSize: "11px", fontWeight: 500, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
-};
 
 interface DayGroup {
   date: string;
@@ -23,12 +21,10 @@ interface DayGroup {
   events: TeamEvent[];
 }
 
-/** 날짜별 묶음(오늘 먼저). 오늘 전에 시작해 이어지는 일정은 오늘 묶음에 둔다. max 는 줄 수 상한 */
-export function groupTeamEvents(events: TeamEvent[], today: string, max = Infinity): DayGroup[] {
+/** 날짜별 묶음(오늘 먼저). 오늘 전에 시작해 이어지는 일정은 오늘 묶음에 둔다 */
+export function groupTeamEvents(events: TeamEvent[], today: string): DayGroup[] {
   const groups: DayGroup[] = [];
-  let rows = 0;
   for (const e of events) {
-    if (rows >= max) break;
     const date = e.date < today ? today : e.date;
     let g = groups.find((x) => x.date === date);
     if (!g) {
@@ -36,7 +32,6 @@ export function groupTeamEvents(events: TeamEvent[], today: string, max = Infini
       groups.push(g);
     }
     g.events.push(e);
-    rows++;
   }
   // 응답은 시작 순이지만 이어지는 일정을 오늘로 옮겼으므로 날짜 순으로 다시 정렬
   return groups.sort((a, b) => a.date.localeCompare(b.date));
@@ -59,22 +54,22 @@ export function teamEventTime(e: TeamEvent, today: string): string {
   return e.start ?? "";
 }
 
-// 줄: 시간 칸(고정 폭) · 제목 · 장소. 오늘 시각 일정이 지났으면 모두 흐린 회색
+/** 오늘 시작·끝나는 시각 일정이 이미 지났는지(여러 날·종일·다음 날 일정은 지나지 않은 것으로 본다). now 가 null 이면 false */
+export function isTeamEventPast(e: TeamEvent, today: string, now: KstNow | null): boolean {
+  const timed = !e.allDay && !e.endDate && e.date === today;
+  return timed && isPastTimed(e.start, e.end, today, now);
+}
+
+// 줄: 시간 칸(왼쪽 칸) · 제목 · 장소. 오늘 시각 일정이 지났으면 모두 흐린 회색
 function TeamEventRow({ event, today, now }: { event: TeamEvent; today: string; now: KstNow | null }) {
-  const time = teamEventTime(event, today);
-  const timed = !event.allDay && !event.endDate && event.date === today; // 오늘 시작·끝나는 시각 일정
-  const past = timed && isPastTimed(event.start, event.end, today, now);
+  const past = isTeamEventPast(event, today, now);
   const kind = event.allDay || event.endDate || event.date < today ? "span" : "time";
   return (
-    <li className="flex items-center gap-1.5 min-w-0" style={{ fontSize: "12px", minHeight: "24px" }}>
+    <li className={`flex items-center ${TITLE_GAP_CLASS} min-w-0 ${ROW_CLASS}`}>
       <span className="flex-shrink-0 tabular-nums whitespace-nowrap" style={timeColStyle(kind, past)}>
-        {time}
+        {teamEventTime(event, today)}
       </span>
-      <span
-        className="truncate min-w-0"
-        style={{ color: past || event.private ? PAST_COLOR : "#1f2937" }}
-        title={event.title}
-      >
+      <span className="truncate min-w-0" style={titleStyle(past || event.private)} title={event.title}>
         {event.title}
       </span>
       {event.location && (
@@ -86,14 +81,12 @@ function TeamEventRow({ event, today, now }: { event: TeamEvent; today: string; 
   );
 }
 
-/** 날짜 제목으로 묶은 목록 (카드·시트가 같이 쓴다) */
-function TeamEventList({ events, today, max }: { events: TeamEvent[]; today: string; max?: number }) {
-  const groups = groupTeamEvents(events, today, max);
-  const now = useNowHm();
+/** 날짜 제목으로 묶은 목록 */
+export function TeamEventList({ events, today, now }: { events: TeamEvent[]; today: string; now: KstNow | null }) {
   return (
-    <div className="flex flex-col gap-2.5">
-      {groups.map((g) => (
-        <div key={g.date} className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
+      {groupTeamEvents(events, today).map((g) => (
+        <div key={g.date} className="flex flex-col">
           <h4 style={{ fontSize: "11px", fontWeight: 600, color: g.today ? "#0f766e" : "#6b7280" }}>
             {g.today ? "오늘" : formatTodayDate(g.date)}
           </h4>
@@ -106,46 +99,26 @@ function TeamEventList({ events, today, max }: { events: TeamEvent[]; today: str
   );
 }
 
-function AllLink() {
-  return (
-    <a href={TEAM_URL} className="ml-auto flex items-center gap-0.5 hover:underline flex-shrink-0" style={{ fontSize: "11px", color: "#2563eb" }}>
-      전체 보기 <ArrowRight size={12} aria-hidden />
-    </a>
-  );
+/** 팀 일정 머리글: 전체 개수 · [전체 보기 →] */
+export function TeamEventsHeader({ count, as }: { count: number; as?: "h2" | "h3" }) {
+  return <SectionHeader as={as} title="팀 일정" count={count} href={TEAM_URL} />;
 }
 
-/** 1024px 이상: 오른쪽 열 '내 할 일' 아래 '팀 일정' 카드 (최대 8줄). data 는 PortalHome 이 useToday() 로 넘긴다(시트가 이 파일을 쓰므로 TodayProvider 를 import 하지 않음) */
+/** 1024px 이상: 오른쪽 열 '내 할 일' 아래 '팀 일정' 카드 (최대 8줄, 넘치면 "+ 일정 N개 더" → 팀 일정 화면). data 는 PortalHome 이 넘긴다 */
 export function TeamEventsCard({ data }: { data: TodayData | null | undefined }) {
+  const now = useNowHm();
   if (!data || data.teamEvents.length === 0) return null;
+  const shown = data.teamEvents.slice(0, CARD_MAX_ROWS);
+  const hidden = data.teamEvents.length - shown.length;
   return (
     <section
-      className="hidden lg:flex flex-col gap-3 bg-white rounded-[12px] p-4 min-w-0"
+      className="hidden lg:flex flex-col gap-1.5 bg-white rounded-[12px] p-4 min-w-0"
       style={{ border: "0.5px solid #e5e7eb" }}
       aria-label="팀 일정"
     >
-      <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
-        <h2 className="font-bold text-gray-900" style={{ fontSize: "15px" }}>팀 일정</h2>
-        <span className="tabular-nums" style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>
-          {data.teamEvents.length}
-        </span>
-        <AllLink />
-      </div>
-      <TeamEventList events={data.teamEvents} today={data.date} max={CARD_MAX_ROWS} />
-    </section>
-  );
-}
-
-/** 1024px 미만 '내 할 일' 시트 안의 팀 일정 칸 (할 일·내 일정 아래, 전부) */
-export function TeamEventsSection({ events, today }: { events: TeamEvent[]; today: string }) {
-  if (events.length === 0) return null;
-  return (
-    <section aria-label="팀 일정">
-      <div className="flex items-center gap-1.5" style={{ marginBottom: "6px" }}>
-        <h3 style={LABEL_STYLE}>팀 일정</h3>
-        <span className="tabular-nums" style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>{events.length}</span>
-        <AllLink />
-      </div>
-      <TeamEventList events={events} today={today} />
+      <TeamEventsHeader count={data.teamEvents.length} />
+      <TeamEventList events={shown} today={data.date} now={now} />
+      {hidden > 0 && <MoreLine text={`+ 일정 ${hidden}개 더`} href={TEAM_URL} />}
     </section>
   );
 }
