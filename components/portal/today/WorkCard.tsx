@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, useState } from "react";
+import { useId, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { PORTAL_APPS } from "@/lib/portal-apps";
 import { useToday, WORK_CARD_ID, type WorkTab } from "./TodayProvider";
@@ -276,18 +276,6 @@ function EventRow({ event, past }: { event: ScheduleEvent; past: boolean }) {
   );
 }
 
-/** 현재 시각 선(오늘 칸, 지난 일정과 남은 일정 사이) — 빨강 1px 선 + 왼쪽 HH:MM. 화면 읽기 프로그램에는 숨긴다 */
-function NowLine({ hm }: { hm: string }) {
-  return (
-    <li aria-hidden className="flex items-center gap-2" style={{ height: "14px" }} data-now-line>
-      <span className="flex-shrink-0 tabular-nums font-semibold" style={{ width: TIME_COL_WIDTH, fontSize: "10px", color: "#dc2626" }}>
-        {hm}
-      </span>
-      <span className="flex-1" style={{ height: "1px", backgroundColor: "#dc2626" }} />
-    </li>
-  );
-}
-
 function SchedulePanel({ data, now }: { data: TodayData; now: KstNow | null }) {
   const [selected, setSelected] = useState(0);
   const listId = useId();
@@ -297,16 +285,10 @@ function SchedulePanel({ data, now }: { data: TodayData; now: KstNow | null }) {
   const day = days[index];
   const isToday = index === 0;
   const all = eventsOn(events, day);
-  // 오늘 칸에서만: 지난 시각 일정 흐림(끝 시각, 없으면 시작 시각 기준) · 현재 시각 선(시각 일정이 있을 때만)
+  // 오늘 칸에서만 지난 시각 일정 흐림(끝 시각, 없으면 시작 시각 기준)
   const past = all.map((e) => isToday && !isSpan(e) && isPastTimed(e.start, e.end, data.date, now));
   const shown = all.slice(0, MAX_ROWS);
   const more = all.length - shown.length;
-  let lineAt = -1;
-  if (isToday && now && all.some((e) => !isSpan(e))) {
-    const lastPast = past.lastIndexOf(true);
-    lineAt = lastPast >= 0 ? lastPast + 1 : all.findIndex((e) => !isSpan(e));
-    if (lineAt > shown.length || (lineAt === shown.length && more > 0)) lineAt = -1; // 숨은 줄 사이면 그리지 않는다
-  }
   return (
     <div className="flex flex-col gap-1.5">
       <DateStrip days={days} counts={counts} selected={index} onSelect={setSelected} panelId={listId} />
@@ -316,13 +298,7 @@ function SchedulePanel({ data, now }: { data: TodayData; now: KstNow | null }) {
         ) : (
           <>
             <ul className="flex flex-col">
-              {shown.map((e, i) => (
-                <Fragment key={i}>
-                  {i === lineAt && now && <NowLine hm={now.hm} />}
-                  <EventRow event={e} past={past[i]} />
-                </Fragment>
-              ))}
-              {lineAt === shown.length && now && <NowLine hm={now.hm} />}
+              {shown.map((e, i) => <EventRow key={i} event={e} past={past[i]} />)}
             </ul>
             {more > 0 && <MoreLink text={`일정 ${more}개 더 · 전체 보기`} href={TEAM_URL} indent="0px" />}
           </>
@@ -371,7 +347,7 @@ function WorkCardSkeleton({ placement }: { placement: Placement }) {
 /** 첫 화면 '내 업무' 카드. placement: top = 1024px 미만 맨 위, side = 1024px 이상 오른쪽 열 맨 위 */
 export default function WorkCard({ placement }: { placement: Placement }) {
   const today = useToday();
-  const now = useNowHm(); // 마운트 전(null)에는 흐림·현재 시각 선 없음(hydration 경고 없음)
+  const now = useNowHm(); // 마운트 전(null)에는 흐림 없음(hydration 경고 없음)
   const ids = useId();
   if (!today) return null;
   if (today.loading) return <WorkCardSkeleton placement={placement} />;
